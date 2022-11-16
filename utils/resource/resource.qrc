@@ -1,0 +1,8 @@
+<RCC>
+  <qresource prefix="icon">
+    <file>icon/clear.svg</file>
+    <file>icon/lock.svg</file>
+    <file>icon/save.svg</file>
+    <file>icon/unlock.svg</file>
+  </qresource>
+</RCC>
