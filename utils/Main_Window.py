@@ -329,7 +329,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
     def selectMediaFile(self):  # 选择媒体文件
         fileDialog = QtWidgets.QFileDialog()
         file_type = ('Video File(*.asf *.avi *.gif *.m4v *.mkv *.mov *.mp4 *.mpeg *.mpg *.ts *.wmv)',
-                     # 'Image File(*.bmp *.dng *.jpeg *.jpg *.mpo *.png *.tif *.tiff *.webp *.pfm)'
+                     'Image File(*.bmp *.dng *.jpeg *.jpg *.mpo *.png *.tif *.tiff *.webp *.pfm)'
                      )
         fileDialog.setNameFilters(file_type)
         fileDialog.setWindowTitle('选择文件')

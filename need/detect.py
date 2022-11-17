@@ -186,9 +186,11 @@ class YOLO:
                 res[label] = {'num': 1, 'score': [score, ]}
             label = f'{label} {int(score * 100)}%'
             if self.draw_box:
-                # Draw rectangle
-                cv2.rectangle(image, (x1, y1), (x2, y2), color=self.box_color, thickness=self.thickness)
-                cv2.putText(image, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), thickness=2)
+                font_scale = image.shape[0] / 480
+                thickness = (image.shape[0] // 270)
+                t2 = self.thickness*thickness
+                cv2.putText(image, label, (x1, y1 - 5 - t2), 16, font_scale, (0, 255, 0), thickness)
+                cv2.rectangle(image, (x1, y1), (x2, y2), self.box_color, t2)
         return res, image
 
 
@@ -197,6 +199,7 @@ class DataLoader(object):
     Image_Type = ('bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm')
 
     def __init__(self, path: Union[int, str], frame_draw=True):
+        self.isFinished = False
         self.path = path
         self.is_front_wabcam = path == 0
         self.is_back_wabcam = path == 1
@@ -268,8 +271,10 @@ class DataLoader(object):
             if not ret:
                 raise StopIteration
             return img, self.path
-        elif self.is_image:
+        elif self.is_image and not self.isFinished:
+            self.isFinished = True
             return cv2.imread(self.path), self.path
+        raise StopIteration
 
     def __iter__(self):
         return self
@@ -340,7 +345,11 @@ class DetectThread(QtCore.QThread):
             else:
                 fps_count += 1
             if self.display_fps:
-                cv2.putText(img, f'FPS:{fps}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 1)
+                fps_ = f'FPS:{fps}'
+                font_scale = img.shape[0] / 960
+                thickness = (img.shape[0] // 270)
+                (_, h), _ = cv2.getTextSize(fps_, 16, font_scale, thickness)
+                cv2.putText(img, fps_, (10, 10+h), 16, font_scale, (0, 0, 255), thickness)
 
             self.img_sig.emit(img)
             self.res_sig.emit(res)

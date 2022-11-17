@@ -9,8 +9,13 @@ from PyQt5 import QtWidgets, QtCore
 from utils.Main_Window import MainWindow, StdOut
 
 if __name__ == "__main__":
+    # todo:命令行模式
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str, default='yolov7_480x640.onnx')
+    parser.add_argument('--weights', type=str, default='need/models/yolov7-tiny_640x640.onnx')
+    parser.add_argument('--class', type=str, default='need/coco_class.txt')
+    parser.add_argument('--source', type=str)
+    parser.add_argument('--conf-thres', type=float, default=0.5)
+    parser.add_argument('--iou-thres', type=float, default=0.5)
     opt = parser.parse_args()
 
     # dump logs
