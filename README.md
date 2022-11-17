@@ -9,7 +9,7 @@
 
 ### 展示
 **主界面**
-![主界面](img.png)
+![主界面](https://img-blog.csdnimg.cn/a52cbae15c7c4fc19ce5476b6374605f.png)
 
 **功能**
 1. 实时帧数
@@ -21,8 +21,8 @@
 7. 保存实时截图、控制台记录
 8. 自定义脚本，每次检测都将触发，(详细说明请阅读need/self_demo.py)
 
-![功能](img_1.png)
-![img_2.png](img_2.png)
+![功能](https://img-blog.csdnimg.cn/93bfdb8ebb844f78b1fb36745d4188a4.png#pic_center)
+![img_2.png](https://img-blog.csdnimg.cn/d2651fe582694c40b818a798aeb154b6.png#pic_center)
 
 
 >### 使用方法：
