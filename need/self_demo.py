@@ -2,7 +2,7 @@
 自定义脚本
 每次检测都将触发执行此文件内的代码, 并将检测结果以"res_data"作为变量名传入, 类型为字典
 阻塞主线程
-自动import自定义脚本文件根目录下的模块和包, 也可以自行os.path.append
+自动import自定义脚本文件根目录下的模块和包, 也可以自行sys.path.append
 此文件位于./need/self_demo.py
 """
 
