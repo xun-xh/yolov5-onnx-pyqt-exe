@@ -239,13 +239,13 @@
               <property name="text">
                <string>打印检测结果</string>
               </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
              </widget>
             </item>
             <item>
              <widget class="QCheckBox" name="checkBox_6">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
               <property name="text">
                <string>打印坐标</string>
               </property>

@@ -160,13 +160,14 @@ class YOLO:
         boxes *= numpy.array([self.img_width, self.img_height, self.img_width, self.img_height])
         return boxes
 
-    def drawDetections(self, image, boxes, scores, class_ids) -> dict:
+    def drawDetections(self, image, boxes, scores, class_ids, with_pos=False) -> dict:
         """
         画锚框，并输出检测结果
         :param image: 输入图像
         :param boxes: from self.detect()
         :param scores: from self.detect()
         :param class_ids: from self.detect()
+        :param with_pos: 是否返回位置
         :return: 检测结果
         """
         res = {}
@@ -179,20 +180,22 @@ class YOLO:
             if label in res:
                 res[label]['num'] += 1
                 res[label]['score'].append(score)
+                if with_pos: res[label]['pos'].append((x1, y1, x2, y2))
             else:
-                res[label] = {'num': 1, 'score': [score, ]}
-            label = f'{label} {int(score * 100)}%'
+                res[label] = {'num': 1, 'score': [score, ], }
+                if with_pos: res[label].update({'pos': [(x1, y1, x2, y2), ]})
+            label_p = f'{label} {int(score * 100)}%'
             if self.draw_box:
                 lw = max(round(sum(image.shape) / 2 * 0.003), self.thickness)  # line width
                 cv2.rectangle(image, (x1, y1), (x2, y2), self.box_color, thickness=lw, lineType=cv2.LINE_AA)
-                if label:
+                if label_p:
                     tf = max(lw - 1, 1)  # font thickness
-                    w, h = cv2.getTextSize(label, 0, fontScale=lw / 3, thickness=tf)[0]  # text width, height
+                    w, h = cv2.getTextSize(label_p, 0, fontScale=lw / 3, thickness=tf)[0]  # text width, height
                     outside = y1 - h >= 3
                     p2 = x1 + w, y1 - h - 3 if outside else y1 + h + 3
                     cv2.rectangle(image, (x1, y1), p2, self.box_color, -1, cv2.LINE_AA)  # filled
                     cv2.putText(image,
-                                label, (x1, y1 - 2 if outside else y1 + h + 2),
+                                label_p, (x1, y1 - 2 if outside else y1 + h + 2),
                                 0,
                                 lw / 3,
                                 self.txt_color,
@@ -304,6 +307,7 @@ class DetectThread(QtCore.QThread):
         self.dataset: DataLoader = dataset
         self.display_fps = True
         self.print_result = True
+        self.print_pos = False
 
     def stopThread(self):
         self.is_running = False
@@ -335,7 +339,7 @@ class DetectThread(QtCore.QThread):
             if self.is_detecting:
                 try:
                     # boxes, scores, class_ids = self.model.detect(img)
-                    res = self.model.drawDetections(img, *self.model.detect(img))
+                    res = self.model.drawDetections(img, *self.model.detect(img), with_pos=self.print_pos)
                     if self.print_result:  # 打印结果
                         print(res)
                 except Exception as e:

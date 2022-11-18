@@ -205,6 +205,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.textBrowser.anchorClicked.connect(lambda x: os.popen(f'"{x.toLocalFile()}"'))  # 超链接打开本地文件
         self.checkBox.stateChanged.connect(self.displayFps)  # 帧数显示
         self.checkBox_5.clicked.connect(self.printResult)  # 打印检测结果
+        self.checkBox_6.clicked.connect(self.printPos)
         self.checkBox_2.clicked.connect(lambda: self.changeModelConfig(self.checkBox_2))  # 是否画锚框
         self.doubleSpinBox.valueChanged.connect(lambda: self.changeModelConfig(self.doubleSpinBox))  # 更改置信度
         self.toolButton_6.clicked.connect(self.changeBoxColor)  # 更改锚框颜色
@@ -239,6 +240,9 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
     def printResult(self):  # 打印检测结果
         self.dt.print_result = self.checkBox_5.isChecked()
 
+    def printPos(self):
+        self.dt.print_pos = self.checkBox_6.isChecked()
+
     def saveToFile(self, index):  # 保存截图、视频、日志
         os.makedirs(self.lineEdit.text(), exist_ok=True)
         head = datetime.now().strftime('%m-%d %H-%M-%S')
@@ -271,6 +275,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.dt.startThread()
         # 预览视频
         if self.comboBox.currentIndex() == 2 and os.path.exists(self.lineEdit_2.text()):
+            self.dt.dataset = detect.DataLoader(self.lineEdit_2.text(), True)  # True抽帧, False不抽帧
             vc = cv2.VideoCapture(self.lineEdit_2.text())
             _, img = vc.read()
             self.displayImg(img)
@@ -283,11 +288,11 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         if not os.path.exists(self.lineEdit_3.text()):
             self.displayLog(f'"{self.lineEdit_3.text()}" not exist', 'red')
             return
-        if self.comboBox.currentIndex() == 2:  # 视频
-            if not os.path.exists(self.lineEdit_2.text()):
-                self.displayLog(f'"{self.lineEdit_2.text()}" not exist', 'red')
-                return
-            self.dt.dataset = detect.DataLoader(self.lineEdit_2.text(), True)  # True抽帧, False不抽帧
+        if self.comboBox.currentIndex() == 2 and not os.path.exists(self.lineEdit_2.text()):  # 视频
+            self.displayLog(f'"{self.lineEdit_2.text()}" not exist', 'red')
+            return
+        if 'dataset' not in self.dt.__dict__:
+            self.indexChanged()
         self.dt.model = detect.YOLO()
         self.dt.model.initConfig(input_width=640,
                                  input_height=640,
