@@ -173,6 +173,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.dt.img_sig.connect(self.displayImg)
         self.dt.res_sig.connect(self.exec)
         self.dt.finished.connect(lambda: self.statusBar().showMessage('exit'))
+        self.dt.finished.connect(self.stop)
         self.dt.startThread()
         self.statusBar().showMessage('initialized', 5000)
 
@@ -259,10 +260,12 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                 print(f'Log has been saved to <a href="file:///{path}">{path}</a>')
         # 保存录屏视频
         elif index == self.pushButton_4 and self.checkBox_4.isChecked():
+            if not (self.dt.dataset.is_video or self.dt.dataset.is_front_wabcam or self.dt.dataset.is_back_wabcam):
+                return
             self.save_video_path = os.path.join(self.lineEdit.text(), f'video_{head}.mp4')
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # 视频编解码器
             fps = self.spinBox.value()
-            width, height = 640, 480  # 宽高
+            width, height = self.dt.dataset.w, self.dt.dataset.h  # 宽高
             self.out_video = cv2.VideoWriter(self.save_video_path, fourcc, fps, (width, height))  # 写入视频
             self.save_video = True
             print(f'begin recording...')

@@ -219,6 +219,8 @@ class DataLoader(object):
 
         if self.is_front_wabcam or self.is_back_wabcam:
             self.cap = cv2.VideoCapture(path, cv2.CAP_DSHOW)
+            self.w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            self.h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         elif self.is_video:
             if not os.path.exists(path):
                 raise FileNotFoundError
@@ -229,6 +231,7 @@ class DataLoader(object):
                         self.cap = cv2.VideoCapture(path)
                         self.fps = int(self.cap.get(cv2.CAP_PROP_FPS))
                         self.frame = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
+                        self.w, self.h = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH), self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
                         self.ret, self.img = self.cap.read()
                         self.pause = threading.Event()
 
@@ -257,9 +260,12 @@ class DataLoader(object):
                         self.cap.release()
 
                 self.cap = VideoFrameDraw()
+                self.w, self.h = int(self.cap.w), int(self.cap.h)
                 self.cap.start()
             else:
                 self.cap = cv2.VideoCapture(path)
+                self.w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                self.h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         elif self.is_image:
             if not os.path.exists(path):
                 raise FileNotFoundError

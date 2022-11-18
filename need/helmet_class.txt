@@ -1,2 +1,2 @@
-no_helmet
 have_helmet
+no_helmet
