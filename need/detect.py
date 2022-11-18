@@ -34,7 +34,7 @@ class YOLO:
         self.has_postprocess = 'score' in self.output_names
 
     def initConfig(self, input_width=640, input_height=480, conf_thres=0.7, iou_thres=0.5, class_names: tuple = None,
-                   draw_box=True, box_color=(255, 0, 0), thickness=2, **kwargs):
+                   draw_box=True, box_color=(0, 0, 255), txt_color=(255, 255, 0), thickness=2, **kwargs):
         """初始化配置"""
         self.input_width = input_width  # 输入图片宽
         self.input_height = input_height  # 输入图片高
@@ -42,35 +42,12 @@ class YOLO:
         self.iou_threshold = iou_thres  # IOU
         self.class_names = class_names  # 类别
         self.draw_box = draw_box  # 是否画锚框
-        self.box_color = box_color[::-1]  # 锚框颜色  RGB
+        self.box_color = box_color  # 锚框颜色 BGR
+        self.txt_color = txt_color  # 文字颜色 BGR
         self.thickness = thickness  # 锚框宽度
+        self.__dict__.update(kwargs)
 
-    def detect(self, image: numpy.ndarray):
-        """
-        :param image: 待检测图像
-        :return: boxes位置, scores置信度, class_ids类别id
-        """
-        input_tensor = self.prepare_input(image)
-        # blob = cv2.dnn.blobFromImage(input_img, 1 / 255.0)
-        # Perform inference on the image
-        if self.t == 'cv2.dnn':
-            self.net.setInput(input_tensor)
-            # Runs the forward pass to get output of the output layers
-            outputs = self.net.forward(self.output_names)
-        else:
-            outputs = self.net.run(self.output_names, {self.input_names[0]: input_tensor})
-
-        if self.has_postprocess:
-            _res = self.parse_processed_output(outputs)
-        else:
-            # Process output data
-            _res = self.process_output(outputs)
-
-        if _res is not None:
-            return _res
-        return None, None, None
-
-    def prepare_input(self, image):
+    def __prepareInput(self, image):
         self.img_height, self.img_width = image.shape[:2]
 
         input_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -84,7 +61,32 @@ class YOLO:
         input_tensor = input_img[numpy.newaxis, :, :, :].astype(numpy.float32)
         return input_tensor
 
-    def process_output(self, output):
+    def detect(self, image: numpy.ndarray):
+        """
+        :param image: 待检测图像 BGR格式
+        :return: boxes位置, scores置信度, class_ids类别id
+        """
+        input_tensor = self.__prepareInput(image)
+        # blob = cv2.dnn.blobFromImage(input_img, 1 / 255.0)
+        # Perform inference on the image
+        if self.t == 'cv2.dnn':
+            self.net.setInput(input_tensor)
+            # Runs the forward pass to get output of the output layers
+            outputs = self.net.forward(self.output_names)
+        else:
+            outputs = self.net.run(self.output_names, {self.input_names[0]: input_tensor})
+
+        if self.has_postprocess:
+            res_ = self.__parseProcessedOutput(outputs)
+        else:
+            # Process output data
+            res_ = self.__processOutput(outputs)
+
+        if res_ is not None:
+            return res_
+        return None, None, None
+
+    def __processOutput(self, output):
         predictions = numpy.squeeze(output[0])
 
         # Filter out object confidence scores below threshold
@@ -107,7 +109,7 @@ class YOLO:
         class_ids = numpy.argmax(predictions[:, 5:], axis=1)
 
         # Get bounding boxes for each object
-        boxes = self.extract_boxes(predictions)
+        boxes = self.__extractBoxes(predictions)
 
         # Apply non-maxima suppression to suppress weak, overlapping bounding boxes
         # indices = nms(boxes, scores, self.iou_threshold)
@@ -117,8 +119,7 @@ class YOLO:
         if indices.size > 0:
             return boxes[indices], scores[indices], class_ids[indices]
 
-    def parse_processed_output(self, outputs):
-
+    def __parseProcessedOutput(self, outputs):
         scores = numpy.squeeze(outputs[self.output_names.index('score')])
         predictions = outputs[self.output_names.index('batchno_classid_x1y1x2y2')]
 
@@ -136,17 +137,13 @@ class YOLO:
         boxes = boxes[:, [1, 0, 3, 2]]
 
         # Rescale boxes to original image dimensions
-        boxes = self.rescale_boxes(boxes)
+        boxes = self.__rescaleBoxes(boxes)
 
         return boxes, scores, class_ids
 
-    def extract_boxes(self, predictions):
-        # Extract boxes from predictions
-        boxes = predictions[:, :4]
-
-        # Scale boxes to original image dimensions
-        boxes = self.rescale_boxes(boxes)
-
+    def __extractBoxes(self, predictions):
+        boxes = predictions[:, :4]  # Extract boxes from predictions
+        boxes = self.__rescaleBoxes(boxes)  # Scale boxes to original image dimensions
         # Convert boxes to xyxy format
         boxes_ = numpy.copy(boxes)
         boxes_[..., 0] = boxes[..., 0] - boxes[..., 2] * 0.5
@@ -156,25 +153,25 @@ class YOLO:
 
         return boxes_
 
-    def rescale_boxes(self, boxes):
+    def __rescaleBoxes(self, boxes):
         # Rescale boxes to original image dimensions
         input_shape = numpy.array([self.input_width, self.input_height, self.input_width, self.input_height])
         boxes = numpy.divide(boxes, input_shape, dtype=numpy.float32)
         boxes *= numpy.array([self.img_width, self.img_height, self.img_width, self.img_height])
         return boxes
 
-    def draw_detections(self, image, boxes, scores, class_ids):
+    def drawDetections(self, image, boxes, scores, class_ids) -> dict:
         """
         画锚框，并输出检测结果
         :param image: 输入图像
         :param boxes: from self.detect()
         :param scores: from self.detect()
         :param class_ids: from self.detect()
-        :return: 检测结果, 输出图像
+        :return: 检测结果
         """
         res = {}
         if boxes is None:
-            return res, image
+            return res
         for box, score, class_id in zip(boxes, scores, class_ids):
             x1, y1, x2, y2 = box.astype(int)
 
@@ -186,12 +183,22 @@ class YOLO:
                 res[label] = {'num': 1, 'score': [score, ]}
             label = f'{label} {int(score * 100)}%'
             if self.draw_box:
-                font_scale = image.shape[0] / 480
-                thickness = (image.shape[0] // 270)
-                t2 = self.thickness*thickness
-                cv2.putText(image, label, (x1, y1 - 5 - t2), 16, font_scale, (0, 255, 0), thickness)
-                cv2.rectangle(image, (x1, y1), (x2, y2), self.box_color, t2)
-        return res, image
+                lw = max(round(sum(image.shape) / 2 * 0.003), self.thickness)  # line width
+                cv2.rectangle(image, (x1, y1), (x2, y2), self.box_color, thickness=lw, lineType=cv2.LINE_AA)
+                if label:
+                    tf = max(lw - 1, 1)  # font thickness
+                    w, h = cv2.getTextSize(label, 0, fontScale=lw / 3, thickness=tf)[0]  # text width, height
+                    outside = y1 - h >= 3
+                    p2 = x1 + w, y1 - h - 3 if outside else y1 + h + 3
+                    cv2.rectangle(image, (x1, y1), p2, self.box_color, -1, cv2.LINE_AA)  # filled
+                    cv2.putText(image,
+                                label, (x1, y1 - 2 if outside else y1 + h + 2),
+                                0,
+                                lw / 3,
+                                self.txt_color,
+                                thickness=tf,
+                                lineType=cv2.LINE_AA)
+        return res
 
 
 class DataLoader(object):
@@ -328,7 +335,7 @@ class DetectThread(QtCore.QThread):
             if self.is_detecting:
                 try:
                     # boxes, scores, class_ids = self.model.detect(img)
-                    res, _ = self.model.draw_detections(img, *self.model.detect(img))
+                    res = self.model.drawDetections(img, *self.model.detect(img))
                     if self.print_result:  # 打印结果
                         print(res)
                 except Exception as e:
@@ -349,7 +356,7 @@ class DetectThread(QtCore.QThread):
                 font_scale = img.shape[0] / 960
                 thickness = (img.shape[0] // 270)
                 (_, h), _ = cv2.getTextSize(fps_, 16, font_scale, thickness)
-                cv2.putText(img, fps_, (10, 10+h), 16, font_scale, (0, 0, 255), thickness)
+                cv2.putText(img, fps_, (10, 10 + h), 16, font_scale, (0, 0, 255), thickness)
 
             self.img_sig.emit(img)
             self.res_sig.emit(res)

@@ -178,7 +178,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
 
         self.save_video = False
         self.out_video: cv2.VideoWriter
-        self.box_color = (255, 0, 0)
+        self.box_color = (0, 0, 255)
 
     def UI(self):  # 槽函数
         self.lineEdit_3.setText('need/models/yolov7-tiny_640x640.onnx')  # 初始化模型路径
@@ -204,10 +204,9 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.highlighter = PyHighlighter(self.textEdit_2.document())  # 实例化 格式化代码类
         self.textBrowser.anchorClicked.connect(lambda x: os.popen(f'"{x.toLocalFile()}"'))  # 超链接打开本地文件
         self.checkBox.stateChanged.connect(self.displayFps)  # 帧数显示
-        self.groupBox.toggled.connect(self.printResult)  # 打印检测结果
-        self.groupBox_2.toggled.connect(lambda: self.changeModelConfig(self.groupBox_2))  # 是否画锚框
+        self.checkBox_5.clicked.connect(self.printResult)  # 打印检测结果
+        self.checkBox_2.clicked.connect(lambda: self.changeModelConfig(self.checkBox_2))  # 是否画锚框
         self.doubleSpinBox.valueChanged.connect(lambda: self.changeModelConfig(self.doubleSpinBox))  # 更改置信度
-        self.spinBox_2.valueChanged.connect(lambda: self.changeModelConfig(self.spinBox_2))  # 更改锚框宽度
         self.toolButton_6.clicked.connect(self.changeBoxColor)  # 更改锚框颜色
         self.checkBox_3.clicked.connect(lambda x: print(f'script {x}'))
         self.pushButton_8.toggled.connect(self.lockBottom)  # 锁定切换 槽函数
@@ -221,27 +220,24 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.dt.model.conf_threshold = self.doubleSpinBox.value()
         elif config_type == self.doubleSpinBox_2:  # 更改IOU
             self.dt.model.iou_threshold = self.doubleSpinBox_2.value()
-        elif config_type == self.groupBox_2:  # 是否显示锚框
-            self.dt.model.draw_box = self.groupBox_2.isChecked()
-        elif config_type == self.spinBox_2:  # 更改锚框宽度
-            self.dt.model.thickness = self.spinBox_2.value()
+        elif config_type == self.checkBox_2:  # 是否显示锚框
+            self.dt.model.draw_box = self.checkBox_2.isChecked()
 
     def changeBoxColor(self):  # 更改锚框颜色
-        old_color = (255, 0, 0)
-        if self.dt.model is not None:
-            old_color = self.dt.model.box_color[::-1]
+        old_color = self.dt.model.box_color[::-1] if self.dt.model else self.box_color
         color_dialog = QtWidgets.QColorDialog()
         color_dialog.setOption(QtWidgets.QColorDialog.ShowAlphaChannel, False)
         new_color = color_dialog.getColor(QtGui.QColor(*old_color))
         if new_color.isValid():
             self.toolButton_6.setStyleSheet(f"color:rgb{new_color.getRgb()[0:3]}")
-            self.box_color = new_color.getRgb()[0:3]
+            self.box_color = new_color.getRgb()[0:3][::-1]
         if self.dt.model is not None:
-            self.dt.model.box_color = new_color.getRgb()[0:3][::-1]
+            self.dt.model.box_color = self.box_color
+            self.dt.model.txt_color = tuple(255-x for x in self.box_color)
         self.__dict__.update()
 
     def printResult(self):  # 打印检测结果
-        self.dt.print_result = self.groupBox.isChecked()
+        self.dt.print_result = self.checkBox_5.isChecked()
 
     def saveToFile(self, index):  # 保存截图、视频、日志
         os.makedirs(self.lineEdit.text(), exist_ok=True)
@@ -295,9 +291,8 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.dt.model = detect.YOLO()
         self.dt.model.initConfig(input_width=640,
                                  input_height=640,
-                                 draw_box=self.groupBox_2.isChecked(),
+                                 draw_box=self.checkBox_2.isChecked(),
                                  box_color=self.box_color,
-                                 thickness=self.spinBox_2.value(),
                                  conf_thres=self.doubleSpinBox.value(),
                                  iou_thres=self.doubleSpinBox_2.value(),
                                  class_names=self.textEdit.toPlainText().split(','),
@@ -318,6 +313,10 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.dt.stopDetect()
             self.statusBar().showMessage('stop detect', 5000)
             print('stop detect')
+            return
+        if self.dt.is_running:
+            self.dt.stopThread()
+            self.dt.wait()
 
     def selectModel(self):  # 选择权重文件
         path, _ = QtWidgets.QFileDialog.getOpenFileName(None, "选择文件",
