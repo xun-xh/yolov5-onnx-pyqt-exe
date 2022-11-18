@@ -224,7 +224,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.dt.model.draw_box = self.checkBox_2.isChecked()
 
     def changeBoxColor(self):  # 更改锚框颜色
-        old_color = self.dt.model.box_color[::-1] if self.dt.model else self.box_color
+        old_color = self.dt.model.box_color[::-1] if self.dt.model else self.box_color[::-1]
         color_dialog = QtWidgets.QColorDialog()
         color_dialog.setOption(QtWidgets.QColorDialog.ShowAlphaChannel, False)
         new_color = color_dialog.getColor(QtGui.QColor(*old_color))
