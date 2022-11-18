@@ -1,4 +1,3 @@
-import logging
 import os
 import threading
 import time
@@ -6,7 +5,6 @@ from typing import Union
 
 import cv2
 import numpy
-from PyQt5 import QtCore
 
 import onnxruntime as ort
 
@@ -33,8 +31,8 @@ class YOLO:
             self.output_names = [model_outputs[i].name for i in range(len(model_outputs))]
         self.has_postprocess = 'score' in self.output_names
 
-    def initConfig(self, input_width=640, input_height=480, conf_thres=0.7, iou_thres=0.5, class_names: tuple = None,
-                   draw_box=True, box_color=(0, 0, 255), txt_color=(255, 255, 0), thickness=2, **kwargs):
+    def initConfig(self, input_width=640, input_height=640, conf_thres=0.7, iou_thres=0.5, draw_box=True, thickness=2,
+                   class_names: Union[tuple, list] = None, box_color=(0, 0, 255), txt_color=(255, 255, 0), **kwargs):
         """初始化配置"""
         self.input_width = input_width  # 输入图片宽
         self.input_height = input_height  # 输入图片高
@@ -211,19 +209,21 @@ class DataLoader(object):
     def __init__(self, path: Union[int, str], frame_draw=True):
         self.isFinished = False
         self.path = path
-        self.is_front_wabcam = path == 0
-        self.is_back_wabcam = path == 1
+        self.is_wabcam_0 = path == 0
+        self.is_wabcam_1 = path == 1
         self.is_video = isinstance(path, str) and path.endswith(DataLoader.Video_Type)
         self.is_image = isinstance(path, str) and path.endswith(DataLoader.Image_Type)
-        assert self.is_front_wabcam or self.is_back_wabcam or self.is_video or self.is_image, '?'
+        assert self.is_wabcam_0 or self.is_wabcam_1 or self.is_video or self.is_image, '?'
 
-        if self.is_front_wabcam or self.is_back_wabcam:
+        if self.is_wabcam_0 or self.is_wabcam_1:
             self.cap = cv2.VideoCapture(path, cv2.CAP_DSHOW)
             self.w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             self.h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            self.fps = 60
         elif self.is_video:
             if not os.path.exists(path):
-                raise FileNotFoundError
+                raise FileNotFoundError(path)
+            self.count = 0
             if frame_draw:
                 class VideoFrameDraw(threading.Thread):
                     def __init__(self):
@@ -266,118 +266,38 @@ class DataLoader(object):
                 self.cap = cv2.VideoCapture(path)
                 self.w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 self.h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         elif self.is_image:
             if not os.path.exists(path):
-                raise FileNotFoundError
+                raise FileNotFoundError(path)
 
     def __next__(self) -> tuple[numpy.ndarray, str]:
-        if self.is_front_wabcam:
+        if self.is_wabcam_0:
             ret, img = self.cap.read()
             if not ret:
                 raise StopIteration
             img = cv2.flip(img, 1)
-            return img, ''
-        elif self.is_back_wabcam:
+            return img, '0.mp4'
+        elif self.is_wabcam_1:
             ret, img = self.cap.read()
             if not ret:
                 raise StopIteration
-            return img, ''
+            return img, '1.mp4'
         elif self.is_video:
             ret, img = self.cap.read()
             if not ret:
                 raise StopIteration
-            return img, self.path
+            # return img, os.path.splitext(self.path)[0]+'_'+str(self.count)+'.png'
+            return img, os.path.basename(self.path)
         elif self.is_image and not self.isFinished:
             self.isFinished = True
-            return cv2.imread(self.path), self.path
+            return cv2.imread(self.path), os.path.basename(self.path)
         raise StopIteration
 
     def __iter__(self):
         return self
 
     def __del__(self):
-        if self.is_front_wabcam or self.is_back_wabcam or self.is_video:
+        if self.is_wabcam_0 or self.is_wabcam_1 or self.is_video:
             self.cap.release()
 
-
-class DetectThread(QtCore.QThread):
-    """检测线程"""
-    img_sig = QtCore.pyqtSignal(numpy.ndarray)
-    res_sig = QtCore.pyqtSignal(dict)
-
-    def __init__(self, model: YOLO = None, dataset: DataLoader = None):
-        super(DetectThread, self).__init__()
-        self.is_running = True
-        self.is_detecting = False
-        self.model = model
-        self.dataset: DataLoader = dataset
-        self.display_fps = True
-        self.print_result = True
-        self.print_pos = False
-
-    def stopThread(self):
-        self.is_running = False
-        self.is_detecting = False
-
-    def stopDetect(self):
-        self.is_detecting = False
-
-    def startThread(self):
-        self.is_detecting = False
-        self.is_running = True
-        if not self.isRunning():
-            self.start()
-
-    def startDetect(self):
-        self.is_detecting = True
-        self.is_running = True
-        if not self.isRunning():
-            self.start()
-
-    def main(self):  # 主函数
-        fps = '--'
-        fps_count = 0
-        t = time.time()
-        for img, path in self.dataset:
-            if not self.is_running:
-                break
-            res = {}
-            if self.is_detecting:
-                try:
-                    # boxes, scores, class_ids = self.model.detect(img)
-                    res = self.model.drawDetections(img, *self.model.detect(img), with_pos=self.print_pos)
-                    if self.print_result:  # 打印结果
-                        print(res)
-                except Exception as e:
-                    print(e)
-                    self.is_detecting = False
-                    print('stop')
-
-            # 显示帧数
-            ted = time.time() - t
-            if ted >= 2:
-                fps = '%.1f' % (fps_count / ted)
-                fps_count = 0
-                t = time.time()
-            else:
-                fps_count += 1
-            if self.display_fps:
-                fps_ = f'FPS:{fps}'
-                font_scale = img.shape[0] / 960
-                thickness = (img.shape[0] // 270)
-                (_, h), _ = cv2.getTextSize(fps_, 16, font_scale, thickness)
-                cv2.putText(img, fps_, (10, 10 + h), 16, font_scale, (0, 0, 255), thickness)
-
-            self.img_sig.emit(img)
-            self.res_sig.emit(res)
-            time.sleep(0.0001)
-
-        del self.dataset
-        print('exit')
-        self.is_detecting = False
-
-    def run(self) -> None:
-        try:
-            self.main()
-        except Exception as e:
-            logging.exception(e)

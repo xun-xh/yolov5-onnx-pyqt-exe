@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+import time
 from datetime import datetime
 
 import cv2
@@ -9,6 +10,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtGui import QImage, QPixmap, QCloseEvent
 
 from utils import detect
+from utils.detect import YOLO, DataLoader
 from utils.resource import Yolo2onnx_detect_Demo_UI, resource_rc
 print(resource_rc)  # 不能删，否则打包会提示ModuleNotFoundError
 
@@ -157,6 +159,89 @@ class PyHighlighter(QtGui.QSyntaxHighlighter):
         QtWidgets.QApplication.restoreOverrideCursor()
 
 
+class DetectThread(QtCore.QThread):
+    """检测线程"""
+    img_sig = QtCore.pyqtSignal(numpy.ndarray)
+    res_sig = QtCore.pyqtSignal(dict)
+
+    def __init__(self, model: YOLO = None, dataset: DataLoader = None):
+        super(DetectThread, self).__init__()
+        self.is_running = True
+        self.is_detecting = False
+        self.model = model
+        self.dataset: DataLoader = dataset
+        self.display_fps = True
+        self.print_result = True
+        self.print_pos = False
+
+    def stopThread(self):
+        self.is_running = False
+        self.is_detecting = False
+
+    def stopDetect(self):
+        self.is_detecting = False
+
+    def startThread(self):
+        self.is_detecting = False
+        self.is_running = True
+        if not self.isRunning():
+            self.start()
+
+    def startDetect(self):
+        self.is_detecting = True
+        self.is_running = True
+        if not self.isRunning():
+            self.start()
+
+    def main(self):  # 主函数
+        fps = '--'
+        fps_count = 0
+        t = time.time()
+        for img, path in self.dataset:
+            if not self.is_running:
+                break
+            res = {}
+            if self.is_detecting:
+                try:
+                    # boxes, scores, class_ids = self.model.detect(img)
+                    res = self.model.drawDetections(img, *self.model.detect(img), with_pos=self.print_pos)
+                    if self.print_result:  # 打印结果
+                        print(res)
+                except Exception as e:
+                    print(e)
+                    self.is_detecting = False
+                    print('stop')
+
+            # 显示帧数
+            ted = time.time() - t
+            if ted >= 2:
+                fps = '%.1f' % (fps_count / ted)
+                fps_count = 0
+                t = time.time()
+            else:
+                fps_count += 1
+            if self.display_fps:
+                fps_ = f'FPS:{fps}'
+                font_scale = img.shape[0] / 960
+                thickness = (img.shape[0] // 270)
+                (_, h), _ = cv2.getTextSize(fps_, 16, font_scale, thickness)
+                cv2.putText(img, fps_, (10, 10 + h), 16, font_scale, (0, 0, 255), thickness)
+
+            self.img_sig.emit(img)
+            self.res_sig.emit(res)
+            time.sleep(0.0001)
+
+        del self.dataset
+        print('exit')
+        self.is_detecting = False
+
+    def run(self) -> None:
+        try:
+            self.main()
+        except Exception as e:
+            logging.exception(e)
+
+
 # noinspection PyAttributeOutsideInit
 class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
     def __init__(self):
@@ -168,7 +253,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.textEdit_2.installEventFilter(self)
 
         # 初始化检测线程
-        self.dt = detect.DetectThread()
+        self.dt = DetectThread()
         self.dt.dataset = detect.DataLoader(0)
         self.dt.img_sig.connect(self.displayImg)
         self.dt.res_sig.connect(self.exec)
@@ -260,7 +345,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                 print(f'Log has been saved to <a href="file:///{path}">{path}</a>')
         # 保存录屏视频
         elif index == self.pushButton_4 and self.checkBox_4.isChecked():
-            if not (self.dt.dataset.is_video or self.dt.dataset.is_front_wabcam or self.dt.dataset.is_back_wabcam):
+            if not (self.dt.dataset.is_video or self.dt.dataset.is_wabcam_0 or self.dt.dataset.is_wabcam_1):
                 return
             self.save_video_path = os.path.join(self.lineEdit.text(), f'video_{head}.mp4')
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # 视频编解码器
