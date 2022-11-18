@@ -27,14 +27,16 @@ def build(main, method):
     return os.path.join(path, main + '.dist', main + '.exe')
 
 
-def movefile(path):
-    shutil.copy(path, output_dir+"/publish/" + os.path.basename(path))
+def movefile(src_path):
+    dst_path = os.path.join(output_dir, 'publish')
+    os.makedirs(dst_path, exist_ok=True)
+    shutil.copy(src_path, os.path.join(dst_path, os.path.basename(path)))
 
 
 if __name__ == "__main__":
     enter = 'Yolo2onnxDetectProjectDemo'
     output_dir = os.path.join(os.getcwd(), 'build_file')
     os.makedirs(output_dir, exist_ok=True)
-    path = build(enter, input("[Debug(0) / Release(1)]："))
-    movefile(path)
+    exe_path = build(enter, input("[Debug(0) / Release(1)]："))
+    movefile(exe_path)
     # pass
