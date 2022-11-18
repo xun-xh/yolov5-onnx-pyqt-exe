@@ -8,7 +8,7 @@ import numpy
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtGui import QImage, QPixmap, QCloseEvent
 
-from need import detect
+from utils import detect
 from utils.resource import Yolo2onnx_detect_Demo_UI, resource_rc
 print(resource_rc)  # 不能删，否则打包会提示ModuleNotFoundError
 
