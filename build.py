@@ -30,7 +30,7 @@ def build(main, method):
 def movefile(src_path):
     dst_path = os.path.join(output_dir, 'publish')
     os.makedirs(dst_path, exist_ok=True)
-    shutil.copy(src_path, os.path.join(dst_path, os.path.basename(path)))
+    shutil.copy(src_path, os.path.join(dst_path, os.path.basename(src_path)))
 
 
 if __name__ == "__main__":

@@ -5,7 +5,6 @@ import os
 import sys
 
 from PyQt5 import QtWidgets, QtCore
-import qt_material  # 一个美化pyqt界面的第三方库
 
 from utils.Main_Window import MainWindow, StdOut
 
@@ -28,7 +27,8 @@ if __name__ == "__main__":
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)  # 高分辨率
     app = QtWidgets.QApplication(sys.argv)
     mainwindow = MainWindow()
-    # qt_material.apply_stylesheet(app, 'dark_blue.xml')  # 界面美化
+    # import qt_material  # 一个美化pyqt界面的第三方库
+    # qt_material.apply_stylesheet(app, 'dark_blue.xml')
 
     # redirect stdout
     stdout = StdOut()
