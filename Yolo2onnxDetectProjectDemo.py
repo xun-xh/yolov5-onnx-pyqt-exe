@@ -33,14 +33,12 @@ def run(**kwargs):
     else:  # 命令行
         from utils import detect
 
-        if kwargs['source'].isdigit():
-            file = (0,)
-        elif os.path.isdir(kwargs['source']):
+        if os.path.isdir(kwargs['source']):
             file = [os.path.join(kwargs['source'], x) for x in os.listdir(kwargs['source'])]
         elif os.path.isfile(kwargs['source']):
             file = (kwargs['source'],)
         else:
-            raise Exception
+            raise ValueError
         model = detect.YOLO()
         model.initModel(kwargs['weights'])
         if not os.path.exists(kwargs['classes']):
@@ -57,15 +55,14 @@ def run(**kwargs):
         print('\nstart detect, press "ctrl+c" to quit\n')
         for f in file:
             try:
-                dataset = detect.DataLoader(f, False)
+                dataset = detect.DataLoader(f, 0)
             except AssertionError:
                 continue
 
             start_time = time.time()
-            f = str(f)+'.mp4' if isinstance(f, int) else f
             with open(os.path.join(kwargs['save_path'], os.path.basename(f)+'.log'), 'w'): pass
             log_file = open(os.path.join(kwargs['save_path'], os.path.basename(f)+'.log'), 'a')
-            if (dataset.is_video or dataset.is_wabcam_0 or dataset.is_wabcam_1) and (not kwargs['video_split']):
+            if dataset.is_video and (not kwargs['video_split']):
                 dst_path = os.path.join(kwargs['save_path'], os.path.basename(f))
                 print(dst_path)
                 out_v = cv2.VideoWriter(dst_path, cv2.VideoWriter_fourcc(*'mp4v'), dataset.fps, (dataset.w, dataset.h))
@@ -79,7 +76,7 @@ def run(**kwargs):
                     dst_path = os.path.join(kwargs['save_path'], base_name)
                     cv2.imwrite(dst_path, img)
                     print(dst_path)
-                elif dataset.is_video or dataset.is_wabcam_0 or dataset.is_wabcam_1:
+                elif dataset.is_video:
                     if kwargs['video_split']:
                         dst_path = os.path.join(kwargs['save_path'], base_name)
                         os.makedirs(dst_path, exist_ok=True)
@@ -96,7 +93,7 @@ def parse_opt():
     parser.add_argument('--nogui', action='store_true')
     parser.add_argument('--weights', type=str, default='need/models/yolov7-tiny_640x640.onnx')
     parser.add_argument('--classes', type=str, default='need/coco_class.txt')
-    parser.add_argument('--source', type=str, default='0')
+    parser.add_argument('--source', type=str, default='data')
     parser.add_argument('--imgsz', nargs='+', type=int, default=[640], help='inference size w,h')
     parser.add_argument('--conf_thres', type=float, default=0.5)
     parser.add_argument('--iou_thres', type=float, default=0.5)

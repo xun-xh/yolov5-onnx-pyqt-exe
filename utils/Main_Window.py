@@ -363,7 +363,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.dt.startThread()
         # 预览视频
         if self.comboBox.currentIndex() == 2 and os.path.exists(self.lineEdit_2.text()):
-            self.dt.dataset = detect.DataLoader(self.lineEdit_2.text(), True)  # True抽帧, False不抽帧
+            self.dt.dataset = detect.DataLoader(self.lineEdit_2.text(), -1)  # -1自动跳帧，0不跳帧，>1跳帧
             vc = cv2.VideoCapture(self.lineEdit_2.text())
             _, img = vc.read()
             self.displayImg(img)

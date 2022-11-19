@@ -206,7 +206,7 @@ class DataLoader(object):
     Video_Type = ('asf', 'avi', 'gif', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'ts', 'wmv')
     Image_Type = ('bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm')
 
-    def __init__(self, path: Union[int, str], frame_draw=True):
+    def __init__(self, path: Union[int, str], frame_skip=-1):
         self.isFinished = False
         self.path = path
         self.is_wabcam_0 = path == 0
@@ -224,45 +224,55 @@ class DataLoader(object):
             if not os.path.exists(path):
                 raise FileNotFoundError(path)
             self.count = 0
-            if frame_draw:
+            self.frame_skip = frame_skip
+            self.idx = 0
+            if frame_skip < 0:
                 class VideoFrameDraw(threading.Thread):
                     def __init__(self):
                         super(VideoFrameDraw, self).__init__(daemon=True)
                         self.cap = cv2.VideoCapture(path)
                         self.fps = int(self.cap.get(cv2.CAP_PROP_FPS))
-                        self.frame = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
+                        self.frame_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
                         self.w, self.h = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH), self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
                         self.ret, self.img = self.cap.read()
                         self.pause = threading.Event()
+                        self.read_frame = False
 
                     def isOpened(self):
                         return self.cap.isOpened()
 
                     def read(self):
                         self.pause.set()
+                        self.read_frame = True
                         return self.ret, self.img
+
+                    def retrieve(self):
+                        return self.read()
 
                     def release(self):
                         self.cap.release()
 
                     def run(self) -> None:
                         while self.cap.isOpened():
-                            ret, img = self.cap.read()
-                            self.ret = ret
-                            if ret:
-                                self.pause.wait()
-                                self.img = img
-                                time.sleep(self.fps / 1000)
-                            else:
+                            self.ret = self.cap.grab()
+                            self.pause.wait()
+                            if not self.ret:
                                 break
+                            if self.read_frame:
+                                self.ret, self.img = self.cap.retrieve()
+                                self.read_frame = False
+                                if not self.ret:
+                                    break
+                            time.sleep(self.fps / 1000)
 
                     def __del__(self):
                         self.cap.release()
 
                 self.cap = VideoFrameDraw()
                 self.w, self.h = int(self.cap.w), int(self.cap.h)
+                self.fps = self.cap.fps
                 self.cap.start()
-            else:
+            else:  # frame_skip >= 0
                 self.cap = cv2.VideoCapture(path)
                 self.w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 self.h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -284,11 +294,21 @@ class DataLoader(object):
                 raise StopIteration
             return img, '1.mp4'
         elif self.is_video:
-            ret, img = self.cap.read()
-            if not ret:
+            while self.idx <= self.frame_skip:
+                ret = self.cap.grab()
+                self.idx += 1
+                if not ret:
+                    raise StopIteration
+            ret, img = self.cap.retrieve()
+            if not ret or img is None:
                 raise StopIteration
-            # return img, os.path.splitext(self.path)[0]+'_'+str(self.count)+'.png'
+            self.idx = 0
             return img, os.path.basename(self.path)
+        # elif self.is_video and self.frame_skip <= 0:
+        #     ret, img = self.cap.read()
+        #     if not ret:
+        #         raise StopIteration
+        #     return img, os.path.basename(self.path)
         elif self.is_image and not self.isFinished:
             self.isFinished = True
             return cv2.imread(self.path), os.path.basename(self.path)
