@@ -12,6 +12,7 @@ from PyQt5.QtGui import QImage, QPixmap, QCloseEvent
 from utils import detect
 from utils.detect import YOLO, DataLoader
 from utils.resource import Yolo2onnx_detect_Demo_UI, resource_rc
+
 print(resource_rc)  # 不能删，否则打包会提示ModuleNotFoundError
 
 
@@ -320,7 +321,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.box_color = new_color.getRgb()[0:3][::-1]
         if self.dt.model is not None:
             self.dt.model.box_color = self.box_color
-            self.dt.model.txt_color = tuple(255-x for x in self.box_color)
+            self.dt.model.txt_color = tuple(255 - x for x in self.box_color)
         self.__dict__.update()
 
     def printResult(self):  # 打印检测结果
@@ -481,6 +482,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         if self.save_video:
             self.out_video.write(img)
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        SelfDataAPI.img_data = img
         img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1] * 3, QImage.Format_BGR888)
         p = min(self.label.width() / img.width(), self.label.height() / img.height())
         pix = QPixmap(img).scaled(int(img.width() * p), int(img.height() * p))
@@ -516,7 +518,8 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         try:
             sys.path.append(os.path.dirname(os.path.abspath(self.self_script_path)))
             globals_ = globals()
-            globals_['res_data'] = text
+            globals_['api_data'] = SelfDataAPI
+            SelfDataAPI.res_data = text
             exec(self.textEdit_2.toPlainText(), globals_)
         except Exception as e:
             self.checkBox_3.setChecked(False)
@@ -540,3 +543,13 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
     def closeEvent(self, a0: QCloseEvent) -> None:
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
+
+
+class SelfDataAPI(object):
+    res_data = None
+    img_data = None
+
+    @classmethod
+    def startDetect(cls):
+        pass
+
