@@ -9,14 +9,19 @@ import numpy
 import onnxruntime as ort
 
 
-class YOLO:
+class YOLO(object):
     """使用yolo的.pt格式模型转换为.onnx格式模型进行目标识别"""
 
     def __init__(self, **kwargs):
         self.initConfig(**kwargs)
 
-    def initModel(self, path, t: str = None):
-        """初始化模型"""
+    def initModel(self, path, t: str = None) -> None:
+        """
+        初始化模型
+        :param path: model path
+        :param t: onnxruntime or cv2.dnn, default: onnxruntime
+        :return:
+        """
         self.t = t
         if t == 'cv2.dnn':
             self.net = cv2.dnn.readNet(path)
@@ -31,9 +36,12 @@ class YOLO:
             self.output_names = [model_outputs[i].name for i in range(len(model_outputs))]
         self.has_postprocess = 'score' in self.output_names
 
-    def initConfig(self, input_width=640, input_height=640, conf_thres=0.7, iou_thres=0.5, draw_box=True, thickness=2,
-                   class_names: Union[tuple, list] = None, box_color=(255, 0, 0), txt_color=(0, 255, 255), **kwargs):
-        """初始化配置"""
+    def initConfig(self, input_width=640, input_height=640, conf_thres=0.5, iou_thres=0.5, draw_box=True, thickness=2,
+                   class_names: Union[tuple, list] = None, box_color=(255, 0, 0), txt_color=(0, 255, 255),
+                   **kwargs) -> None:
+        """
+        初始化模型配置
+        """
         self.input_width = input_width  # 输入图片宽
         self.input_height = input_height  # 输入图片高
         self.conf_threshold = conf_thres  # 置信度
@@ -150,7 +158,7 @@ class YOLO:
         return boxes_
 
     def __rescaleBoxes(self, boxes):
-        # Rescale boxes to original image dimensions
+        """Rescale boxes to original image dimensions"""
         input_shape = numpy.array([self.input_width, self.input_height, self.input_width, self.input_height])
         boxes = numpy.divide(boxes, input_shape, dtype=numpy.float32)
         boxes *= numpy.array([self.img_width, self.img_height, self.img_width, self.img_height])
@@ -158,7 +166,7 @@ class YOLO:
 
     def drawDetections(self, image, boxes, scores, class_ids, with_pos=False) -> dict:
         """
-        画锚框，并输出检测结果
+        格式化检测结果
         :param image: 输入图像
         :param boxes: from self.detect()
         :param scores: from self.detect()
@@ -166,20 +174,19 @@ class YOLO:
         :param with_pos: 是否返回位置
         :return: 检测结果
         """
-        res = {}
+        detection = {}
         if boxes is None:
-            return res
+            return detection
         for box, score, class_id in zip(boxes, scores, class_ids):
             x1, y1, x2, y2 = box.astype(int)
-
             label = self.class_names[class_id]
-            if label in res:
-                res[label]['num'] += 1
-                res[label]['score'].append(score)
-                if with_pos: res[label]['pos'].append((x1, y1, x2, y2))
+            if label in detection:
+                detection[label]['num'] += 1
+                detection[label]['score'].append(score)
+                if with_pos: detection[label]['pos'].append((x1, y1, x2, y2))
             else:
-                res[label] = {'num': 1, 'score': [score, ], }
-                if with_pos: res[label].update({'pos': [(x1, y1, x2, y2), ]})
+                detection[label] = {'num': 1, 'score': [score, ], }
+                if with_pos: detection[label].update({'pos': [(x1, y1, x2, y2), ]})
             label_p = f'{label} {int(score * 100)}%'
             if self.draw_box:
                 lw = max(round(sum(image.shape) / 2 * 0.003), self.thickness)  # line width
@@ -197,7 +204,7 @@ class YOLO:
                                 self.txt_color,
                                 thickness=tf,
                                 lineType=cv2.LINE_AA)
-        return res
+        return detection
 
 
 class DataLoader(object):
@@ -206,6 +213,10 @@ class DataLoader(object):
     IMAGE_TYPE = ('bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm')
 
     def __init__(self, path: Union[int, str], frame_skip=-1):
+        """
+        :param path: image/video path
+        :param frame_skip: frame skip or not, <0: auto; =0: dont skip; >0: skip  # video only
+        """
         self.isFinished = False
         self.path = path
         self.is_wabcam_0 = path == 0
@@ -233,7 +244,7 @@ class DataLoader(object):
                         self.isOpened = self.cap.isOpened
                         self.release = self.cap.release
 
-                        self.fps = int(self.cap.get(cv2.CAP_PROP_FPS))
+                        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
                         self.frame_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
                         self.w, self.h = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH), self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
                         self.ret = self.cap.grab() if self.cap.isOpened() else False
@@ -245,8 +256,10 @@ class DataLoader(object):
                         self.pause = threading.Event()
                         self.read_frame = False
 
+                        self.start()
+
                     def retrieve(self):
-                        self.pause.set()
+                        if not self.pause.isSet(): self.pause.set()
                         if self.ret:
                             self.read_frame = True
                             return self.ret, self.img
@@ -258,8 +271,8 @@ class DataLoader(object):
                             self.pause.wait()
                             if not self.ret:
                                 break
+                            time.sleep(self.fps / 1000)
                             if not self.read_frame:
-                                time.sleep(self.fps / 1000)
                                 continue
                             self.ret, self.img = self.cap.retrieve()
                             self.read_frame = False
@@ -272,7 +285,6 @@ class DataLoader(object):
                 self.cap = VideoFrameDraw()
                 self.w, self.h = int(self.cap.w), int(self.cap.h)
                 self.fps = self.cap.fps
-                self.cap.start()
             else:  # frame_skip >= 0
                 self.cap = cv2.VideoCapture(path)
                 self.w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))

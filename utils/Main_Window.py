@@ -17,7 +17,7 @@ print(resource_rc)  # 不能删，否则打包会提示ModuleNotFoundError
 
 
 class StdOut(QtCore.QObject):
-    """rewrite print"""
+    """rewrite sys.Stdout"""
     signalForText = QtCore.pyqtSignal(str)
 
     def write(self, text):
@@ -176,19 +176,27 @@ class DetectThread(QtCore.QThread):
         self.print_pos = False
 
     def stopThread(self):
+        if not self.is_running:
+            return
         self.is_running = False
         self.is_detecting = False
 
     def stopDetect(self):
+        if not self.is_detecting:
+            return
         self.is_detecting = False
 
     def startThread(self):
+        if self.is_running:
+            return
         self.is_detecting = False
         self.is_running = True
         if not self.isRunning():
             self.start()
 
     def startDetect(self):
+        if self.is_detecting:
+            return
         self.is_detecting = True
         self.is_running = True
         if not self.isRunning():
@@ -234,7 +242,7 @@ class DetectThread(QtCore.QThread):
 
         del self.dataset
         print('exit')
-        self.is_detecting = False
+        self.stopThread()
 
     def run(self) -> None:
         try:
@@ -245,17 +253,22 @@ class DetectThread(QtCore.QThread):
 
 # noinspection PyAttributeOutsideInit
 class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
-    def __init__(self):
+    def __init__(self, **kwargs):
         super(MainWindow, self).__init__()
         self.setupUi(self)
         self.statusBar().showMessage('initializing...')
         self.UI()
+        self.loadConfig(**kwargs)
         self.installEventFilter(self)
         self.textEdit_2.installEventFilter(self)
 
+        self.save_video = False
+        self.out_video: cv2.VideoWriter
+        self.box_color = (255, 0, 0)
+
         # 初始化检测线程
         self.dt = DetectThread()
-        self.dt.dataset = detect.DataLoader(0)
+        self.indexChanged()
         self.dt.img_sig.connect(self.displayImg)
         self.dt.res_sig.connect(self.exec)
         self.dt.finished.connect(lambda: self.statusBar().showMessage('exit'))
@@ -263,14 +276,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.dt.startThread()
         self.statusBar().showMessage('initialized', 5000)
 
-        self.save_video = False
-        self.out_video: cv2.VideoWriter
-        self.box_color = (255, 0, 0)
-
     def UI(self):  # 槽函数
-        self.lineEdit_3.setText('need/models/yolov7-tiny_640x640.onnx')  # 初始化模型路径
-        self.lineEdit_2.setText('example.mp4')
-        self.lineEdit.setText(os.path.join(os.getcwd(), 'out'))  # 初始化保存路径
         self.toolButton.clicked.connect(self.selectSaveFile)  # 选择保存位置
         self.toolButton_2.clicked.connect(self.selectMediaFile)  # 选择媒体文件
         self.toolButton_3.clicked.connect(self.selectModel)  # 选择模型
@@ -279,14 +285,11 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.comboBox.currentIndexChanged.connect(self.indexChanged)  # 输入方式切换
         self.pushButton_3.clicked.connect(lambda: self.saveToFile(self.pushButton_3))  # 保存日志
         self.pushButton.clicked.connect(lambda: self.saveToFile(self.pushButton))  # 保存截图
+        self.checkBox_4.clicked.connect(lambda: self.saveToFile(self.checkBox_4))  # 保存视频
         self.toolButton_4.clicked.connect(self.selectClassFile)  # 选择类别
         self.textEdit.textChanged.connect(self.displayClassNum)  # 显示类别个数
-        self.class_file = 'need/coco_class.txt'
-        if os.path.exists(self.class_file):
-            self.textEdit.setText(open(self.class_file, 'r').read().replace('\n', ','))  # 初始化类别
         self.pushButton_2.clicked.connect(lambda: os.popen(f'explorer "{self.lineEdit.text()}"'))  # 打开保存目录
         self.toolButton_5.clicked.connect(lambda: self.selectPyFile(None))  # 导入自定义脚本 槽函数
-        self.self_script_path = os.path.join(os.getcwd(), 'need', 'self_demo.py')  # 初始化自定义脚本路径
         self.pushButton_7.clicked.connect(lambda: self.selectPyFile(self.self_script_path))  # 选择自定义脚本路径
         self.highlighter = PyHighlighter(self.textEdit_2.document())  # 实例化 格式化代码类
         self.textBrowser.anchorClicked.connect(lambda x: os.popen(f'"{x.toLocalFile()}"'))  # 超链接打开本地文件
@@ -300,6 +303,18 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.pushButton_8.toggled.connect(self.lockBottom)  # 锁定切换 槽函数
         self.pushButton_9.setHidden(True)  # 保存日志 暂时隐藏
         self.pushButton_10.clicked.connect(lambda: self.textBrowser.clear())  # 清空控制台
+
+    def loadConfig(self, **kwargs):
+        # self.comboBox.setCurrentIndex(0)
+        self.lineEdit_3.setText('need/models/yolov7-tiny_640x640.onnx')  # # 初始化模型路径
+        self.lineEdit_2.setText('example.mp4')
+        self.class_file = 'need/coco_class.txt'
+        if os.path.exists(self.class_file):
+            self.textEdit.setText(open(self.class_file, 'r').read().replace('\n', ','))  # 初始化类别
+        self.doubleSpinBox.setValue(0.5)
+        self.doubleSpinBox_2.setValue(0.5)
+        self.lineEdit.setText(os.path.join(os.getcwd(), 'out'))  # 初始化保存路径
+        self.self_script_path = os.path.join(os.getcwd(), 'need', 'self_demo.py')  # 初始化自定义脚本路径
 
     def changeModelConfig(self, config_type):  # 更改模型配置
         if self.dt.model is None:
@@ -344,7 +359,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                 f.write(self.textBrowser.toPlainText())
                 print(f'Log has been saved to <a href="file:///{path}">{path}</a>')
         # 保存录屏视频
-        elif index == self.pushButton_4 and self.checkBox_4.isChecked():
+        elif index == self.checkBox_4 and self.checkBox_4.isChecked() and self.dt.is_detecting:
             if not (self.dt.dataset.is_video or self.dt.dataset.is_wabcam_0 or self.dt.dataset.is_wabcam_1):
                 return
             self.save_video_path = os.path.join(self.lineEdit.text(), f'video_{head}.mp4')
@@ -354,22 +369,50 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.out_video = cv2.VideoWriter(self.save_video_path, fourcc, fps, (width, height))  # 写入视频
             self.save_video = True
             print(f'begin recording...')
+        elif index == self.checkBox_4 and not self.checkBox_4.isChecked():
+            self.stopRecord()
+
+    def stopRecord(self):
+        if not self.save_video:
+            return
+        self.save_video = False
+        self.out_video.release()
+        print(f'Video has been saved to <a href="file:///{self.save_video_path}">{self.save_video_path}</a>')
 
     def indexChanged(self):  # 切换输入方式
+        self.stopRecord()
         self.dt.blockSignals(True)
         self.dt.stopThread()
         self.dt.wait()
         if self.comboBox.currentIndex() == 0 or self.comboBox.currentIndex() == 1:  # 前摄后摄
             self.dt.dataset = detect.DataLoader(self.comboBox.currentIndex())
             self.dt.startThread()
-        # 预览视频
-        if self.comboBox.currentIndex() == 2 and os.path.exists(self.lineEdit_2.text()):
+        if self.comboBox.currentIndex() == 2 and os.path.exists(self.lineEdit_2.text()):  #
             self.dt.dataset = detect.DataLoader(self.lineEdit_2.text(), -1)  # -1自动跳帧，0不跳帧，>1跳帧
-            vc = cv2.VideoCapture(self.lineEdit_2.text())
-            _, img = vc.read()
-            self.displayImg(img)
-            vc.release()
+            self.previewVideo(self.lineEdit_2.text())  # 预览视频
         self.dt.blockSignals(False)
+
+    def selectMediaFile(self):  # 选择媒体文件
+        fileDialog = QtWidgets.QFileDialog()
+        file_type = ('Video File(*.asf *.avi *.gif *.m4v *.mkv *.mov *.mp4 *.mpeg *.mpg *.ts *.wmv)',
+                     'Image File(*.bmp *.dng *.jpeg *.jpg *.mpo *.png *.tif *.tiff *.webp *.pfm)'
+                     )
+        fileDialog.setNameFilters(file_type)
+        fileDialog.setWindowTitle('选择文件')
+        # fileDialog.setFileMode(QtWidgets.QFileDialog.ExistingFiles)  # 多选
+        fileDialog.setDirectory(os.path.dirname(os.path.abspath(self.lineEdit_2.text())))
+        if fileDialog.exec() != QtWidgets.QFileDialog.Accepted:
+            return
+        self.lineEdit_2.setText('|'.join(fileDialog.selectedFiles()))  # 设置路径
+        # 预览视频
+        if self.comboBox.currentIndex() == 2:
+            self.previewVideo(fileDialog.selectedFiles()[0])
+
+    def previewVideo(self, path):
+        vc = cv2.VideoCapture(path)
+        _, img = vc.read()
+        self.displayImg(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        vc.release()
 
     def start(self):  # 启动检测线程
         if self.dt.is_detecting:
@@ -397,15 +440,12 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
 
         self.dt.model.initModel(self.lineEdit_3.text(), t=None)  # cv2.dnn or onnxruntime
 
-        self.saveToFile(self.pushButton_4)
         self.dt.startDetect()
+        self.saveToFile(self.checkBox_4)
         self.statusBar().showMessage('start detect...', 5000)
 
     def stop(self):  # 停止检测
-        if self.save_video:
-            self.save_video = False
-            self.out_video.release()
-            print(f'Video has been saved to <a href="file:///{self.save_video_path}">{self.save_video_path}</a>')
+        self.stopRecord()
         if self.dt.is_detecting:
             self.dt.stopDetect()
             self.statusBar().showMessage('stop detect', 5000)
@@ -421,25 +461,6 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                                                         '*.onnx')
         if path:
             self.lineEdit_3.setText(path)
-
-    def selectMediaFile(self):  # 选择媒体文件
-        fileDialog = QtWidgets.QFileDialog()
-        file_type = ('Video File(*.asf *.avi *.gif *.m4v *.mkv *.mov *.mp4 *.mpeg *.mpg *.ts *.wmv)',
-                     'Image File(*.bmp *.dng *.jpeg *.jpg *.mpo *.png *.tif *.tiff *.webp *.pfm)'
-                     )
-        fileDialog.setNameFilters(file_type)
-        fileDialog.setWindowTitle('选择文件')
-        # fileDialog.setFileMode(QtWidgets.QFileDialog.ExistingFiles)  # 多选
-        fileDialog.setDirectory(os.path.dirname(os.path.abspath(self.lineEdit_2.text())))
-        if fileDialog.exec() != QtWidgets.QFileDialog.Accepted:
-            return
-        self.lineEdit_2.setText('|'.join(fileDialog.selectedFiles()))  # 设置路径
-        # 预览视频
-        if self.comboBox.currentIndex() == 2:
-            vc = cv2.VideoCapture(fileDialog.selectedFiles()[0])
-            _, img = vc.read()
-            self.displayImg(img)
-            vc.release()
 
     def selectClassFile(self):  # 选择类别文件
         path, _ = QtWidgets.QFileDialog.getOpenFileName(None, "选择文件",
@@ -470,6 +491,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         for i in ['utf8', 'gbk']:
             try:
                 self.textEdit_2.setPlainText(open(self.self_script_path, 'r', encoding=i).read())
+                sys.path.append(os.path.dirname(os.path.abspath(self.self_script_path)))
             except UnicodeError:
                 pass
 
@@ -483,7 +505,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
 
     def displayImg(self, img: numpy.ndarray):  # 显示图片到label
         if self.save_video:
-            self.out_video.write(img)
+            self.out_video.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
         SelfDataAPI.img_data = img
         img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1] * 3, QImage.Format_RGB888)
         p = min(self.label.width() / img.width(), self.label.height() / img.height())
@@ -518,7 +540,6 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         if not self.checkBox_3.isChecked():
             return
         try:
-            sys.path.append(os.path.dirname(os.path.abspath(self.self_script_path)))
             globals_ = globals()
             globals_['api_data'] = SelfDataAPI
             SelfDataAPI.res_data = text
