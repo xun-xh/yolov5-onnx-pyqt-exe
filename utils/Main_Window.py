@@ -226,7 +226,7 @@ class DetectThread(QtCore.QThread):
                 font_scale = img.shape[0] / 960
                 thickness = (img.shape[0] // 270)
                 (_, h), _ = cv2.getTextSize(fps_, 16, font_scale, thickness)
-                cv2.putText(img, fps_, (10, 10 + h), 16, font_scale, (0, 0, 255), thickness)
+                cv2.putText(img, fps_, (10, 10 + h), 16, font_scale, (255, 0, 0), thickness)
 
             self.img_sig.emit(img)
             self.res_sig.emit(res)
@@ -265,7 +265,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
 
         self.save_video = False
         self.out_video: cv2.VideoWriter
-        self.box_color = (0, 0, 255)
+        self.box_color = (255, 0, 0)
 
     def UI(self):  # 槽函数
         self.lineEdit_3.setText('need/models/yolov7-tiny_640x640.onnx')  # 初始化模型路径
@@ -312,17 +312,16 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.dt.model.draw_box = self.checkBox_2.isChecked()
 
     def changeBoxColor(self):  # 更改锚框颜色
-        old_color = self.dt.model.box_color[::-1] if self.dt.model else self.box_color[::-1]
-        color_dialog = QtWidgets.QColorDialog()
-        color_dialog.setOption(QtWidgets.QColorDialog.ShowAlphaChannel, False)
-        new_color = color_dialog.getColor(QtGui.QColor(*old_color))
-        if new_color.isValid():
-            self.toolButton_6.setStyleSheet(f"color:rgb{new_color.getRgb()[0:3]}")
-            self.box_color = new_color.getRgb()[0:3][::-1]
-        if self.dt.model is not None:
-            self.dt.model.box_color = self.box_color
-            self.dt.model.txt_color = tuple(255 - x for x in self.box_color)
-        self.__dict__.update()
+        old_color = self.dt.model.box_color if self.dt.model else self.box_color
+        new_color = QtWidgets.QColorDialog.getColor(QtGui.QColor(*old_color))
+        if not new_color.isValid():
+            return
+        self.toolButton_6.setStyleSheet(f"color:rgb{new_color.getRgb()[0:3]}")
+        self.box_color = new_color.getRgb()[0:3]
+        if self.dt.model is None:
+            return
+        self.dt.model.box_color = self.box_color
+        self.dt.model.txt_color = tuple(255 - x for x in self.box_color)
 
     def printResult(self):  # 打印检测结果
         self.dt.print_result = self.checkBox_5.isChecked()
@@ -357,6 +356,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             print(f'begin recording...')
 
     def indexChanged(self):  # 切换输入方式
+        self.dt.blockSignals(True)
         self.dt.stopThread()
         self.dt.wait()
         if self.comboBox.currentIndex() == 0 or self.comboBox.currentIndex() == 1:  # 前摄后摄
@@ -369,6 +369,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             _, img = vc.read()
             self.displayImg(img)
             vc.release()
+        self.dt.blockSignals(False)
 
     def start(self):  # 启动检测线程
         if self.dt.is_detecting:
@@ -387,6 +388,8 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                                  input_height=640,
                                  draw_box=self.checkBox_2.isChecked(),
                                  box_color=self.box_color,
+                                 txt_color=tuple(255 - x for x in self.box_color),
+                                 thickness=2,
                                  conf_thres=self.doubleSpinBox.value(),
                                  iou_thres=self.doubleSpinBox_2.value(),
                                  class_names=self.textEdit.toPlainText().split(','),
@@ -481,9 +484,8 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
     def displayImg(self, img: numpy.ndarray):  # 显示图片到label
         if self.save_video:
             self.out_video.write(img)
-        # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         SelfDataAPI.img_data = img
-        img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1] * 3, QImage.Format_BGR888)
+        img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1] * 3, QImage.Format_RGB888)
         p = min(self.label.width() / img.width(), self.label.height() / img.height())
         pix = QPixmap(img).scaled(int(img.width() * p), int(img.height() * p))
         self.label.setPixmap(pix)

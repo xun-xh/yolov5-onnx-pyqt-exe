@@ -32,7 +32,7 @@ class YOLO:
         self.has_postprocess = 'score' in self.output_names
 
     def initConfig(self, input_width=640, input_height=640, conf_thres=0.7, iou_thres=0.5, draw_box=True, thickness=2,
-                   class_names: Union[tuple, list] = None, box_color=(0, 0, 255), txt_color=(255, 255, 0), **kwargs):
+                   class_names: Union[tuple, list] = None, box_color=(255, 0, 0), txt_color=(0, 255, 255), **kwargs):
         """初始化配置"""
         self.input_width = input_width  # 输入图片宽
         self.input_height = input_height  # 输入图片高
@@ -48,10 +48,8 @@ class YOLO:
     def __prepareInput(self, image):
         self.img_height, self.img_width = image.shape[:2]
 
-        input_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
         # Resize input image
-        input_img = cv2.resize(input_img, (self.input_width, self.input_height))
+        input_img = cv2.resize(image, (self.input_width, self.input_height))
 
         # Scale input pixel values to 0 to 1
         input_img = input_img / 255.0
@@ -61,7 +59,7 @@ class YOLO:
 
     def detect(self, image: numpy.ndarray):
         """
-        :param image: 待检测图像 BGR格式
+        :param image: 待检测图像 RGB格式
         :return: boxes位置, scores置信度, class_ids类别id
         """
         input_tensor = self.__prepareInput(image)
@@ -203,23 +201,23 @@ class YOLO:
 
 
 class DataLoader(object):
-    Video_Type = ('asf', 'avi', 'gif', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'ts', 'wmv')
-    Image_Type = ('bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm')
+    """逐帧加载图像，返回RGB格式"""
+    VIDEO_TYPE = ('asf', 'avi', 'gif', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'ts', 'wmv')
+    IMAGE_TYPE = ('bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm')
 
     def __init__(self, path: Union[int, str], frame_skip=-1):
         self.isFinished = False
         self.path = path
         self.is_wabcam_0 = path == 0
         self.is_wabcam_1 = path == 1
-        self.is_video = isinstance(path, str) and path.endswith(DataLoader.Video_Type)
-        self.is_image = isinstance(path, str) and path.endswith(DataLoader.Image_Type)
+        self.is_video = isinstance(path, str) and path.endswith(DataLoader.VIDEO_TYPE)
+        self.is_image = isinstance(path, str) and path.endswith(DataLoader.IMAGE_TYPE)
         assert self.is_wabcam_0 or self.is_wabcam_1 or self.is_video or self.is_image, '?'
 
         if self.is_wabcam_0 or self.is_wabcam_1:
             self.cap = cv2.VideoCapture(path, cv2.CAP_DSHOW)
             self.w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             self.h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            self.fps = 60
         elif self.is_video:
             if not os.path.exists(path):
                 raise FileNotFoundError(path)
@@ -231,26 +229,28 @@ class DataLoader(object):
                     def __init__(self):
                         super(VideoFrameDraw, self).__init__(daemon=True)
                         self.cap = cv2.VideoCapture(path)
+                        self.grab = self.cap.grab
+                        self.isOpened = self.cap.isOpened
+                        self.release = self.cap.release
+
                         self.fps = int(self.cap.get(cv2.CAP_PROP_FPS))
                         self.frame_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
                         self.w, self.h = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH), self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-                        self.ret, self.img = self.cap.read()
+                        self.ret = self.cap.grab() if self.cap.isOpened() else False
+                        if not self.ret:
+                            return
+                        self.ret, self.img = self.cap.retrieve()
+                        if not self.ret or self.img is None:
+                            return
                         self.pause = threading.Event()
                         self.read_frame = False
 
-                    def isOpened(self):
-                        return self.cap.isOpened()
-
-                    def read(self):
-                        self.pause.set()
-                        self.read_frame = True
-                        return self.ret, self.img
-
                     def retrieve(self):
-                        return self.read()
-
-                    def release(self):
-                        self.cap.release()
+                        self.pause.set()
+                        if self.ret:
+                            self.read_frame = True
+                            return self.ret, self.img
+                        return False, None
 
                     def run(self) -> None:
                         while self.cap.isOpened():
@@ -258,15 +258,16 @@ class DataLoader(object):
                             self.pause.wait()
                             if not self.ret:
                                 break
-                            if self.read_frame:
-                                self.ret, self.img = self.cap.retrieve()
-                                self.read_frame = False
-                                if not self.ret:
-                                    break
-                            time.sleep(self.fps / 1000)
+                            if not self.read_frame:
+                                time.sleep(self.fps / 1000)
+                                continue
+                            self.ret, self.img = self.cap.retrieve()
+                            self.read_frame = False
+                            if not self.ret:
+                                break
 
                     def __del__(self):
-                        self.cap.release()
+                        self.release()
 
                 self.cap = VideoFrameDraw()
                 self.w, self.h = int(self.cap.w), int(self.cap.h)
@@ -282,37 +283,31 @@ class DataLoader(object):
                 raise FileNotFoundError(path)
 
     def __next__(self) -> tuple[numpy.ndarray, str]:
-        if self.is_wabcam_0:
+        if (self.is_wabcam_0 or self.is_wabcam_1) and self.cap.isOpened():
             ret, img = self.cap.read()
-            if not ret:
-                raise StopIteration
-            img = cv2.flip(img, 1)
-            return img, '0.mp4'
-        elif self.is_wabcam_1:
-            ret, img = self.cap.read()
-            if not ret:
-                raise StopIteration
-            return img, '1.mp4'
-        elif self.is_video:
+            if self.is_wabcam_0: img = cv2.flip(img, 1)
+            path = ''
+        elif self.is_video and self.cap.isOpened():
             while self.idx <= self.frame_skip:
                 ret = self.cap.grab()
                 self.idx += 1
                 if not ret:
                     raise StopIteration
             ret, img = self.cap.retrieve()
-            if not ret or img is None:
-                raise StopIteration
             self.idx = 0
-            return img, os.path.basename(self.path)
-        # elif self.is_video and self.frame_skip <= 0:
-        #     ret, img = self.cap.read()
-        #     if not ret:
-        #         raise StopIteration
-        #     return img, os.path.basename(self.path)
+            path = self.path
         elif self.is_image and not self.isFinished:
             self.isFinished = True
-            return cv2.imread(self.path), os.path.basename(self.path)
-        raise StopIteration
+            ret = True
+            img = cv2.imread(self.path)
+            path = self.path
+        else:
+            raise StopIteration
+
+        if not ret or img is None:
+            raise StopIteration
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        return img, os.path.basename(path)
 
     def __iter__(self):
         return self
