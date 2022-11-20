@@ -255,6 +255,8 @@ class DetectThread(QtCore.QThread):
 class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
     def __init__(self, **kwargs):
         super(MainWindow, self).__init__()
+        self.save_video = False
+        self.dt = DetectThread()
         self.setupUi(self)
         self.statusBar().showMessage('initializing...')
         self.UI()
@@ -262,18 +264,14 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.installEventFilter(self)
         self.textEdit_2.installEventFilter(self)
 
-        self.save_video = False
         self.out_video: cv2.VideoWriter
         self.box_color = (255, 0, 0)
 
         # 初始化检测线程
-        self.dt = DetectThread()
-        self.indexChanged()
         self.dt.img_sig.connect(self.displayImg)
         self.dt.res_sig.connect(self.exec)
         self.dt.finished.connect(lambda: self.statusBar().showMessage('exit'))
         self.dt.finished.connect(self.stop)
-        self.dt.startThread()
         self.statusBar().showMessage('initialized', 5000)
 
     def UI(self):  # 槽函数
@@ -305,7 +303,10 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.pushButton_10.clicked.connect(lambda: self.textBrowser.clear())  # 清空控制台
 
     def loadConfig(self, **kwargs):
-        # self.comboBox.setCurrentIndex(0)
+        self.comboBox.blockSignals(True)
+        self.comboBox.setCurrentIndex(0)
+        self.indexChanged(self.comboBox.currentIndex())
+        self.comboBox.blockSignals(False)
         self.lineEdit_3.setText('need/models/yolov7-tiny_640x640.onnx')  # # 初始化模型路径
         self.lineEdit_2.setText('example.mp4')
         self.class_file = 'need/coco_class.txt'
@@ -315,6 +316,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.doubleSpinBox_2.setValue(0.5)
         self.lineEdit.setText(os.path.join(os.getcwd(), 'out'))  # 初始化保存路径
         self.self_script_path = os.path.join(os.getcwd(), 'need', 'self_demo.py')  # 初始化自定义脚本路径
+        self.dt.startThread()
 
     def changeModelConfig(self, config_type):  # 更改模型配置
         if self.dt.model is None:
@@ -379,15 +381,15 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.out_video.release()
         print(f'Video has been saved to <a href="file:///{self.save_video_path}">{self.save_video_path}</a>')
 
-    def indexChanged(self):  # 切换输入方式
+    def indexChanged(self, index):  # 切换输入方式
         self.stopRecord()
         self.dt.blockSignals(True)
         self.dt.stopThread()
         self.dt.wait()
-        if self.comboBox.currentIndex() == 0 or self.comboBox.currentIndex() == 1:  # 前摄后摄
+        if index == 0 or index == 1:  # 前摄后摄
             self.dt.dataset = detect.DataLoader(self.comboBox.currentIndex())
             self.dt.startThread()
-        if self.comboBox.currentIndex() == 2 and os.path.exists(self.lineEdit_2.text()):  #
+        if index == 2 and os.path.exists(self.lineEdit_2.text()):  #
             self.dt.dataset = detect.DataLoader(self.lineEdit_2.text(), -1)  # -1自动跳帧，0不跳帧，>1跳帧
             self.previewVideo(self.lineEdit_2.text())  # 预览视频
         self.dt.blockSignals(False)
@@ -425,7 +427,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.displayLog(f'"{self.lineEdit_2.text()}" not exist', 'red')
             return
         if 'dataset' not in self.dt.__dict__:
-            self.indexChanged()
+            self.indexChanged(self.comboBox.currentIndex())
         self.dt.model = detect.YOLO()
         self.dt.model.initConfig(input_width=640,
                                  input_height=640,
