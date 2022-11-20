@@ -307,9 +307,9 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.comboBox.setCurrentIndex(0)
         self.indexChanged(self.comboBox.currentIndex())
         self.comboBox.blockSignals(False)
-        self.lineEdit_3.setText('need/models/yolov7-tiny_640x640.onnx')  # # 初始化模型路径
+        self.lineEdit_3.setText('need/models/yolov7-tiny.onnx')  # # 初始化模型路径
         self.lineEdit_2.setText('example.mp4')
-        self.class_file = 'need/coco_class.txt'
+        self.class_file = 'need/yolov7-tiny.txt'
         if os.path.exists(self.class_file):
             self.textEdit.setText(open(self.class_file, 'r').read().replace('\n', ','))  # 初始化类别
         self.doubleSpinBox.setValue(0.5)
@@ -463,16 +463,21 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                                                         '*.onnx')
         if path:
             self.lineEdit_3.setText(path)
+        class_txt_path = os.path.join(os.path.dirname(os.path.dirname(path)),
+                                      ''.join(os.path.basename(path).split('.')[:-1])+'.txt')
+        if os.path.exists(class_txt_path):
+            self.class_file = class_txt_path
+            with open(self.class_file, 'r') as f:
+                self.textEdit.setText(f.read().replace('，', ',').replace('|', ',').replace('\n', ','))
 
     def selectClassFile(self):  # 选择类别文件
         path, _ = QtWidgets.QFileDialog.getOpenFileName(None, "选择文件",
                                                         os.path.dirname(os.path.abspath(self.class_file)),
                                                         '*.txt')
-        if not path:
-            return
-        self.class_file = path
-        with open(self.class_file, 'r') as f:
-            self.textEdit.setText(f.read().replace(' ', ',').replace('，', ',').replace('|', ',').replace('\n', ','))
+        if path:
+            self.class_file = path
+            with open(self.class_file, 'r') as f:
+                self.textEdit.setText(f.read().replace('，', ',').replace('|', ',').replace('\n', ','))
 
     def selectSaveFile(self):  # 选择保存位置
         file_path = QtWidgets.QFileDialog.getExistingDirectory(None, "选择保存位置", self.lineEdit.text())

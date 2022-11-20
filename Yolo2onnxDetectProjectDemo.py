@@ -91,8 +91,8 @@ def run(**kwargs):
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--nogui', action='store_true')
-    parser.add_argument('--weights', type=str, default='need/models/yolov7-tiny_640x640.onnx')
-    parser.add_argument('--classes', type=str, default='need/coco_class.txt')
+    parser.add_argument('--weights', type=str, default='need/models/yolov7-tiny.onnx')
+    parser.add_argument('--classes', type=str, default='need/yolov7-tiny.txt')
     parser.add_argument('--source', type=str, default='data')
     parser.add_argument('--imgsz', nargs='+', type=int, default=[640], help='inference size w,h')
     parser.add_argument('--conf_thres', type=float, default=0.5)
