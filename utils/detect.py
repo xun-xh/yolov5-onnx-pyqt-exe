@@ -180,6 +180,8 @@ class YOLO(object):
         for box, score, class_id in zip(boxes, scores, class_ids):
             x1, y1, x2, y2 = box.astype(int)
             label = self.class_names[class_id]
+            if label == '_':
+                continue
             if label in detection:
                 detection[label]['num'] += 1
                 detection[label]['score'].append(score)

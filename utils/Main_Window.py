@@ -229,7 +229,7 @@ class DetectThread(QtCore.QThread):
                 t = time.time()
             else:
                 fps_count += 1
-            if self.display_fps:
+            if self.display_fps and not self.dataset.is_image:
                 fps_ = f'FPS:{fps}'
                 font_scale = img.shape[0] / 960
                 thickness = (img.shape[0] // 270)
@@ -255,6 +255,7 @@ class DetectThread(QtCore.QThread):
 class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
     def __init__(self, **kwargs):
         super(MainWindow, self).__init__()
+        self.default_media_type = False
         self.save_video = False
         self.dt = DetectThread()
         self.setupUi(self)
@@ -399,12 +400,14 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         file_type = ('Video File(*.asf *.avi *.gif *.m4v *.mkv *.mov *.mp4 *.mpeg *.mpg *.ts *.wmv)',
                      'Image File(*.bmp *.dng *.jpeg *.jpg *.mpo *.png *.tif *.tiff *.webp *.pfm)'
                      )
+        file_type = file_type[::-1] if self.default_media_type else file_type
         fileDialog.setNameFilters(file_type)
         fileDialog.setWindowTitle('选择文件')
         # fileDialog.setFileMode(QtWidgets.QFileDialog.ExistingFiles)  # 多选
         fileDialog.setDirectory(os.path.dirname(os.path.abspath(self.lineEdit_2.text())))
         if fileDialog.exec() != QtWidgets.QFileDialog.Accepted:
             return
+        self.default_media_type = ''.join(fileDialog.selectedFiles()).endswith(DataLoader.IMAGE_TYPE)
         self.lineEdit_2.setText('|'.join(fileDialog.selectedFiles()))  # 设置路径
         # 预览视频
         if self.comboBox.currentIndex() == 2:
