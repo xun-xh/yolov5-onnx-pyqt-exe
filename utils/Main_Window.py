@@ -562,12 +562,15 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                 cursor = self.textEdit_2.textCursor()
                 cursor.insertText(" " * 4)
                 return True
-        if objwatched == self.textBrowser:
-            if eventType == QtCore.QEvent.Wheel:
-                # print(event.angleDelta())
-                pass
         if eventType == QtCore.QEvent.MouseButtonPress:
             self.setFocus()
+        if eventType == QtCore.QEvent.KeyPress:
+            if event.modifiers() == QtCore.Qt.ControlModifier and event.key() == QtCore.Qt.Key_R:
+                self.start()
+            elif event.modifiers() == QtCore.Qt.ControlModifier and event.key() == QtCore.Qt.Key_E:
+                self.stop()
+            elif event.modifiers() == QtCore.Qt.ControlModifier and event.key() == QtCore.Qt.Key_S:
+                self.saveToFile(self.pushButton)
         return super().eventFilter(objwatched, event)
 
     def closeEvent(self, a0: QCloseEvent) -> None:
