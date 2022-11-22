@@ -1,2 +1,2 @@
-have_helmet
-no_helmet
+helmet
+head
