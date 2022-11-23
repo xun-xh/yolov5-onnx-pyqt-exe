@@ -26,6 +26,13 @@ class StdOut(QtCore.QObject):
         if len(text) > 500: text = text[0:10] + ' ...... ' + text[-10:-1]
         self.signalForText.emit(text)
 
+    # def write(self, *text):
+    #     head = ''
+    #     for i in text:
+    #         if i == '\n': continue
+    #         head = head + str(i) + ' '
+    #     self.signalForText.emit(head)
+
     def flush(self):
         pass
 
@@ -258,6 +265,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.default_media_type = False
         self.save_video = False
         self.dt = DetectThread()
+        self.script_api = ScriptDataAPI(self.dt)
         self.setupUi(self)
         self.statusBar().showMessage('initializing...')
         self.UI()
@@ -302,6 +310,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.pushButton_8.toggled.connect(self.lockBottom)  # 锁定切换 槽函数
         self.pushButton_9.setHidden(True)  # 保存日志 暂时隐藏
         self.pushButton_10.clicked.connect(lambda: self.textBrowser.clear())  # 清空控制台
+        self.script_api.start_sig.connect(lambda x: self.start() if x else self.stop())
 
     def loadConfig(self, **kwargs):
         self.comboBox.blockSignals(True)
@@ -316,7 +325,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.doubleSpinBox.setValue(0.5)
         self.doubleSpinBox_2.setValue(0.5)
         self.lineEdit.setText(os.path.join(os.getcwd(), 'out'))  # 初始化保存路径
-        self.self_script_path = os.path.join(os.getcwd(), 'need', 'self_demo.py')  # 初始化自定义脚本路径
+        self.self_script_path = os.path.join('need', 'self_demo.py')  # 初始化自定义脚本路径
         self.dt.startThread()
 
     def changeModelConfig(self, config_type):  # 更改模型配置
@@ -516,13 +525,13 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
     def displayImg(self, img: numpy.ndarray):  # 显示图片到label
         if self.save_video:
             self.out_video.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-        SelfDataAPI.img_data = img
+        self.script_api.img_data = img
         img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1] * 3, QImage.Format_RGB888)
         p = min(self.label.width() / img.width(), self.label.height() / img.height())
         pix = QPixmap(img).scaled(int(img.width() * p), int(img.height() * p))
         self.label.setPixmap(pix)
 
-    def displayLog(self, text, color='black'):  # 输出控制台信息到textBrowser
+    def displayLog(self, text: str, color='black'):  # 输出控制台信息到textBrowser
         head_ = f"{datetime.now().strftime('%H:%M:%S.%f')} >> "
 
         if '<class' in text:
@@ -550,9 +559,15 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         if not self.checkBox_3.isChecked():
             return
         try:
-            globals_ = globals()
-            globals_['api_data'] = SelfDataAPI
-            SelfDataAPI.res_data = text
+            def scriptPrint(*args, **kwargs):
+                head = '['+os.path.basename(self.self_script_path)+']: '
+                for i in args:
+                    head = head + str(i) + ' '
+                self.displayLog(head, 'gray')
+            globals_ = globals().copy()
+            globals_['data_api'] = self.script_api
+            globals_['print'] = scriptPrint
+            self.script_api.res_data = text
             exec(self.textEdit_2.toPlainText(), globals_)
         except Exception as e:
             self.checkBox_3.setChecked(False)
@@ -581,11 +596,43 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         sys.stderr = sys.__stderr__
 
 
-class SelfDataAPI(object):
-    res_data = None
-    img_data = None
+class ScriptDataAPI(QtCore.QObject):
+    """
+    res_data: 属性，检测结果，dict类型
+    img_data: 属性，实时图片，numpy.ndarray类型
+    setDetectStatus(bool): 方法，设置检测状态，接受一个bool类型参数，为True时开启检测，为False时停止检测
+    setModelConfig(**kwargs): 方法，设置模型配置，接受关键字参数，可选关键字参数有
+        model_path(str),
+        input_width(int),
+        input_height(int),
+        draw_box(bool),
+        box_color(tuple[int,int,int]),
+        txt_color(tuple[int,int,int]),
+        thickness(int),
+        conf_thres(float),
+        iou_thres(float),
+        class_names(list[str])
+    """
+    start_sig = QtCore.pyqtSignal(bool)
 
-    @classmethod
-    def startDetect(cls):
-        pass
+    def __init__(self, thread):
+        super(ScriptDataAPI, self).__init__()
+        self.thread: DetectThread = thread
+        self.res_data = None
+        self.img_data = None
 
+    @property
+    def help(self):
+        return self.__doc__
+
+    def setDetectStatus(self, status: bool):
+        if status and not self.thread.is_detecting:
+            self.start_sig.emit(status)
+        elif not status and self.thread.is_detecting:
+            self.start_sig.emit(status)
+
+    def setModelConfig(self, **kwargs):
+        if 'model_path' in kwargs:
+            self.thread.model.initModel(kwargs['model_path'])
+        if self.thread.model:
+            self.thread.model.__dict__.update(**kwargs)

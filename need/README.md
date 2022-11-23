@@ -5,12 +5,11 @@
 ## 此文件夹是目标检测相关内容
 
 > `models`文件夹内为成品onnx模型，可直接使用。
-> * `./need/models/helmet_1.onnx`为自己训练的模型，其他两个为官方提供的模型。
-> * 使用`./need/models/yolov7_480x640.onnx`时需注意，要将输入尺寸改为`640*480`
+> * `./need/models/helmet_1.onnx`为自己训练的模型，另一个为自己转换的官方模型。
 >
-> `coco_class.txt`为Yolo官方训练好的模型的类别文件，内含80种可检测物品
+> `yolov7-tiny.txt`为Yolo官方训练好的模型的类别文件，内含80种可检测物品
 >
-> `helmet_class.txt`为自己训练的安全帽识别模型的类别文件，内含2种可检测物品
+> `helmet_1.txt`为自己训练的安全帽识别模型的类别文件，内含2种可检测物品
 > 
 > `self_demo.py`为自定义脚本示例文件。
 

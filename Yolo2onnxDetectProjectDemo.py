@@ -98,9 +98,9 @@ def parse_opt():
     parser.add_argument('--conf_thres', type=float, default=0.5)
     parser.add_argument('--iou_thres', type=float, default=0.5)
     parser.add_argument('--save_path', type=str, default='out')
-    parser.add_argument('--save_log', action='store_true', help='save results to *.log')
-    parser.add_argument('--save_result', action='store_true', help='save image/video')
-    parser.add_argument('--video_split', action='store_true', help='save image/video')
+    parser.add_argument('--save_log', action='store_true')
+    parser.add_argument('--save_result', action='store_true')
+    parser.add_argument('--video_split', action='store_true')
     opt_ = parser.parse_args()
     opt_.imgsz *= 2 if len(opt_.imgsz) == 1 else 1  # expand
     print(vars(opt_))
