@@ -39,7 +39,7 @@ def run(**kwargs):
             file = (kwargs['source'],)
         else:
             raise ValueError
-        model = detect.YOLO()
+        model = detect.YOLOv5()
         model.initModel(kwargs['weights'])
         if not os.path.exists(kwargs['classes']):
             raise FileNotFoundError
@@ -69,7 +69,7 @@ def run(**kwargs):
 
             count = 0
             for img, base_name in dataset:
-                res_ = model.drawDetections(img, *model.detect(img))
+                res_ = model.detect(img)
                 count += 1
                 log_file.write(f'{count}: {res_}\n')
                 if dataset.is_image:

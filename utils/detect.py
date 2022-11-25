@@ -6,10 +6,8 @@ from typing import Union
 import cv2
 import numpy
 
-import onnxruntime as ort
 
-
-class YOLO(object):
+class YOLOv5(object):
     """使用yolo的.pt格式模型转换为.onnx格式模型进行目标识别"""
 
     def __init__(self, **kwargs):
@@ -28,7 +26,8 @@ class YOLO(object):
 
             self.output_names = self.net.getUnconnectedOutLayersNames()
         else:
-            self.net = ort.InferenceSession(path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+            import onnxruntime
+            self.net = onnxruntime.InferenceSession(path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
             model_inputs = self.net.get_inputs()
             self.input_names = [model_inputs[i].name for i in range(len(model_inputs))]
 
@@ -36,8 +35,9 @@ class YOLO(object):
             self.output_names = [model_outputs[i].name for i in range(len(model_outputs))]
         self.has_postprocess = 'score' in self.output_names
 
-    def initConfig(self, input_width=640, input_height=640, conf_thres=0.5, iou_thres=0.5, draw_box=True, thickness=2,
-                   class_names: Union[tuple, list] = None, box_color=(255, 0, 0), txt_color=(0, 255, 255),
+    def initConfig(self, input_width=640, input_height=640, conf_thres=0.5, iou_thres=0.5, draw_box=True,
+                   thickness=2, class_names: Union[tuple, list] = None, box_color=(255, 0, 0),
+                   txt_color=(0, 255, 255), with_pos=False,
                    **kwargs) -> None:
         """
         初始化模型配置
@@ -51,7 +51,14 @@ class YOLO(object):
         self.box_color = box_color  # 锚框颜色 BGR
         self.txt_color = txt_color  # 文字颜色 BGR
         self.thickness = thickness  # 锚框宽度
+        self.with_pos = with_pos  # 是否返回坐标
         self.__dict__.update(kwargs)
+
+    def detect(self, image: numpy.ndarray) -> dict:
+        outputs = self.__inference(image)
+        boxes, scores, class_ids = self.__postProcess(outputs)
+        res_ = self.__formatResult(image, boxes, scores, class_ids)
+        return res_
 
     def __prepareInput(self, image):
         self.img_height, self.img_width = image.shape[:2]
@@ -65,11 +72,11 @@ class YOLO(object):
         input_tensor = input_img[numpy.newaxis, :, :, :].astype(numpy.float32)
         return input_tensor
 
-    def detect(self, image: numpy.ndarray):
+    def __inference(self, image: numpy.ndarray) -> list[numpy.ndarray]:
         """
-        :param image: 待检测图像 RGB格式
-        :return: boxes位置, scores置信度, class_ids类别id
-        """
+            :param image: 待检测图像 RGB格式
+            :return:
+            """
         input_tensor = self.__prepareInput(image)
         # blob = cv2.dnn.blobFromImage(input_img, 1 / 255.0)
         # Perform inference on the image
@@ -79,18 +86,18 @@ class YOLO(object):
             outputs = self.net.forward(self.output_names)
         else:
             outputs = self.net.run(self.output_names, {self.input_names[0]: input_tensor})
+        # print(outputs[0].shape)  # (1, 25200, 85)
+        return outputs
 
+    def __postProcess(self, outputs):
         if self.has_postprocess:
             res_ = self.__parseProcessedOutput(outputs)
         else:
             # Process output data
             res_ = self.__processOutput(outputs)
+        return res_
 
-        if res_ is not None:
-            return res_
-        return None, None, None
-
-    def __processOutput(self, output):
+    def __processOutput(self, output) -> tuple:
         predictions = numpy.squeeze(output[0])
 
         # Filter out object confidence scores below threshold
@@ -122,6 +129,8 @@ class YOLO(object):
         indices = indices.flatten()
         if indices.size > 0:
             return boxes[indices], scores[indices], class_ids[indices]
+        else:
+            return None, None, None
 
     def __parseProcessedOutput(self, outputs):
         scores = numpy.squeeze(outputs[self.output_names.index('score')])
@@ -164,14 +173,13 @@ class YOLO(object):
         boxes *= numpy.array([self.img_width, self.img_height, self.img_width, self.img_height])
         return boxes
 
-    def drawDetections(self, image, boxes, scores, class_ids, with_pos=False) -> dict:
+    def __formatResult(self, image, boxes, scores, class_ids) -> dict:
         """
         格式化检测结果
         :param image: 输入图像
-        :param boxes: from self.detect()
-        :param scores: from self.detect()
-        :param class_ids: from self.detect()
-        :param with_pos: 是否返回位置
+        :param boxes:
+        :param scores:
+        :param class_ids:
         :return: 检测结果
         """
         detection = {}
@@ -185,12 +193,13 @@ class YOLO(object):
             if label in detection:
                 detection[label]['num'] += 1
                 detection[label]['score'].append(score)
-                if with_pos: detection[label]['pos'].append((x1, y1, x2, y2))
+                if self.with_pos: detection[label]['pos'].append((x1, y1, x2, y2))
             else:
                 detection[label] = {'num': 1, 'score': [score, ], }
-                if with_pos: detection[label].update({'pos': [(x1, y1, x2, y2), ]})
-            label_p = f'{label} {int(score * 100)}%'
+                if self.with_pos: detection[label].update({'pos': [(x1, y1, x2, y2), ]})
+
             if self.draw_box:
+                label_p = f'{label} {int(score * 100)}%'
                 lw = max(round(sum(image.shape) / 2 * 0.003), self.thickness)  # line width
                 cv2.rectangle(image, (x1, y1), (x2, y2), self.box_color, thickness=lw, lineType=cv2.LINE_AA)
                 if label_p:

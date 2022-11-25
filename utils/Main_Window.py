@@ -10,7 +10,6 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtGui import QImage, QPixmap, QCloseEvent
 
 from utils import detect
-from utils.detect import YOLO, DataLoader
 from utils.resource import Yolo2onnx_detect_Demo_UI, resource_rc
 
 print(resource_rc)  # 不能删，否则打包会提示ModuleNotFoundError
@@ -37,8 +36,8 @@ class StdOut(QtCore.QObject):
         pass
 
 
-# 格式化python代码
 class PyHighlighter(QtGui.QSyntaxHighlighter):
+    """格式化python代码"""
     Rules = []
     Formats = {}
 
@@ -172,12 +171,12 @@ class DetectThread(QtCore.QThread):
     img_sig = QtCore.pyqtSignal(numpy.ndarray)
     res_sig = QtCore.pyqtSignal(dict)
 
-    def __init__(self, model: YOLO = None, dataset: DataLoader = None):
+    def __init__(self, model: detect.YOLOv5 = None, dataset: detect.DataLoader = None):
         super(DetectThread, self).__init__()
         self.is_running = True
         self.is_detecting = False
         self.model = model
-        self.dataset: DataLoader = dataset
+        self.dataset: detect.DataLoader = dataset
         self.display_fps = True
         self.print_result = True
         self.print_pos = False
@@ -219,8 +218,7 @@ class DetectThread(QtCore.QThread):
             res = {}
             if self.is_detecting:
                 try:
-                    # boxes, scores, class_ids = self.model.detect(img)
-                    res = self.model.drawDetections(img, *self.model.detect(img), with_pos=self.print_pos)
+                    res = self.model.detect(img)
                     if self.print_result:  # 打印结果
                         print(res)
                 except Exception as e:
@@ -302,9 +300,9 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.textBrowser.anchorClicked.connect(lambda x: os.popen(f'"{x.toLocalFile()}"'))  # 超链接打开本地文件
         self.checkBox.stateChanged.connect(self.displayFps)  # 帧数显示
         self.checkBox_5.clicked.connect(self.printResult)  # 打印检测结果
-        self.checkBox_6.clicked.connect(self.printPos)
-        self.checkBox_2.clicked.connect(lambda: self.changeModelConfig(self.checkBox_2))  # 是否画锚框
-        self.doubleSpinBox.valueChanged.connect(lambda: self.changeModelConfig(self.doubleSpinBox))  # 更改置信度
+        self.checkBox_6.clicked.connect(lambda: self.changeModelConfig)
+        self.checkBox_2.clicked.connect(self.changeModelConfig)  # 是否画锚框
+        self.doubleSpinBox.valueChanged.connect(self.changeModelConfig)  # 更改置信度
         self.toolButton_6.clicked.connect(self.changeBoxColor)  # 更改锚框颜色
         self.checkBox_3.clicked.connect(lambda x: print(f'script {x}'))
         self.pushButton_8.toggled.connect(self.lockBottom)  # 锁定切换 槽函数
@@ -328,15 +326,13 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.self_script_path = os.path.join('need', 'self_demo.py')  # 初始化自定义脚本路径
         self.dt.startThread()
 
-    def changeModelConfig(self, config_type):  # 更改模型配置
+    def changeModelConfig(self):  # 更改模型配置
         if self.dt.model is None:
             return
-        if config_type == self.doubleSpinBox:  # 更改置信度
-            self.dt.model.conf_threshold = self.doubleSpinBox.value()
-        elif config_type == self.doubleSpinBox_2:  # 更改IOU
-            self.dt.model.iou_threshold = self.doubleSpinBox_2.value()
-        elif config_type == self.checkBox_2:  # 是否显示锚框
-            self.dt.model.draw_box = self.checkBox_2.isChecked()
+        self.dt.model.conf_threshold = self.doubleSpinBox.value()  # 更改置信度
+        self.dt.model.iou_threshold = self.doubleSpinBox_2.value()  # 更改IOU
+        self.dt.model.draw_box = self.checkBox_2.isChecked()  # 是否显示锚框
+        self.dt.model.print_pos = self.checkBox_6.isChecked()  # 是否返回坐标
 
     def changeBoxColor(self):  # 更改锚框颜色
         old_color = self.dt.model.box_color if self.dt.model else self.box_color
@@ -352,9 +348,6 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
 
     def printResult(self):  # 打印检测结果
         self.dt.print_result = self.checkBox_5.isChecked()
-
-    def printPos(self):
-        self.dt.print_pos = self.checkBox_6.isChecked()
 
     def saveToFile(self, index):  # 保存截图、视频、日志
         os.makedirs(self.lineEdit.text(), exist_ok=True)
@@ -416,7 +409,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         fileDialog.setDirectory(os.path.dirname(os.path.abspath(self.lineEdit_2.text())))
         if fileDialog.exec() != QtWidgets.QFileDialog.Accepted:
             return
-        self.default_media_type = ''.join(fileDialog.selectedFiles()).endswith(DataLoader.IMAGE_TYPE)
+        self.default_media_type = ''.join(fileDialog.selectedFiles()).endswith(detect.DataLoader.IMAGE_TYPE)
         self.lineEdit_2.setText('|'.join(fileDialog.selectedFiles()))  # 设置路径
         # 预览视频
         if self.comboBox.currentIndex() == 2:
@@ -440,7 +433,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             return
         if 'dataset' not in self.dt.__dict__:
             self.indexChanged(self.comboBox.currentIndex())
-        self.dt.model = detect.YOLO()
+        self.dt.model = detect.YOLOv5()
         self.dt.model.initConfig(input_width=640,
                                  input_height=640,
                                  draw_box=self.checkBox_2.isChecked(),
@@ -450,6 +443,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                                  conf_thres=self.doubleSpinBox.value(),
                                  iou_thres=self.doubleSpinBox_2.value(),
                                  class_names=self.textEdit.toPlainText().split(','),
+                                 with_pos=self.checkBox_6.isChecked(),
                                  )
 
         self.dt.model.initModel(self.lineEdit_3.text(), t=None)  # cv2.dnn or onnxruntime
@@ -476,7 +470,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         if path:
             self.lineEdit_3.setText(path)
         class_txt_path = os.path.join(os.path.dirname(os.path.dirname(path)),
-                                      ''.join(os.path.basename(path).split('.')[:-1])+'.txt')
+                                      ''.join(os.path.basename(path).split('.')[:-1]) + '.txt')
         if os.path.exists(class_txt_path):
             self.class_file = class_txt_path
             with open(self.class_file, 'r') as f:
@@ -560,10 +554,11 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             return
         try:
             def scriptPrint(*args, **kwargs):
-                head = '['+os.path.basename(self.self_script_path)+']: '
+                head = '[' + os.path.basename(self.self_script_path) + ']: '
                 for i in args:
                     head = head + str(i) + ' '
                 self.displayLog(head, 'gray')
+
             globals_ = globals().copy()
             globals_['data_api'] = self.script_api
             globals_['print'] = scriptPrint
