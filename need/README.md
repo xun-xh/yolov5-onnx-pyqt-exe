@@ -5,7 +5,7 @@
 ## 此文件夹是目标检测相关内容
 
 > `models`文件夹内为成品onnx模型，可直接使用。
-> * `./need/models/helmet_1.onnx`为自己训练的模型，另一个为自己转换的官方模型。
+> * `need/models/helmet_1.onnx`为自己训练的模型，另一个为自己转换的官方模型。
 >
 > `yolov7-tiny.txt`为Yolo官方训练好的模型的类别文件，内含80种可检测物品
 >

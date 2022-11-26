@@ -179,7 +179,6 @@ class DetectThread(QtCore.QThread):
         self.dataset: detect.DataLoader = dataset
         self.display_fps = True
         self.print_result = True
-        self.print_pos = False
 
     def stopThread(self):
         if not self.is_running:
@@ -282,25 +281,25 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.statusBar().showMessage('initialized', 5000)
 
     def UI(self):  # 槽函数
-        self.toolButton.clicked.connect(self.selectSaveFile)  # 选择保存位置
-        self.toolButton_2.clicked.connect(self.selectMediaFile)  # 选择媒体文件
-        self.toolButton_3.clicked.connect(self.selectModel)  # 选择模型
+        self.toolButton.clicked.connect(self.changeSaveFile)  # 选择保存位置
+        self.toolButton_2.clicked.connect(self.changeMediaFile)  # 选择媒体文件
+        self.toolButton_3.clicked.connect(self.changeModel)  # 选择模型
         self.pushButton_4.clicked.connect(self.start)  # 开始检测槽函数
         self.pushButton_5.clicked.connect(self.stop)
         self.comboBox.currentIndexChanged.connect(self.indexChanged)  # 输入方式切换
         self.pushButton_3.clicked.connect(lambda: self.saveToFile(self.pushButton_3))  # 保存日志
         self.pushButton.clicked.connect(lambda: self.saveToFile(self.pushButton))  # 保存截图
         self.checkBox_4.clicked.connect(lambda: self.saveToFile(self.checkBox_4))  # 保存视频
-        self.toolButton_4.clicked.connect(self.selectClassFile)  # 选择类别
+        self.toolButton_4.clicked.connect(self.changeClassFile)  # 选择类别
         self.textEdit.textChanged.connect(self.displayClassNum)  # 显示类别个数
         self.pushButton_2.clicked.connect(lambda: os.popen(f'explorer "{self.lineEdit.text()}"'))  # 打开保存目录
-        self.toolButton_5.clicked.connect(lambda: self.selectPyFile(None))  # 导入自定义脚本 槽函数
-        self.pushButton_7.clicked.connect(lambda: self.selectPyFile(self.self_script_path))  # 选择自定义脚本路径
+        self.toolButton_5.clicked.connect(lambda: self.changePyFile(None))  # 导入自定义脚本 槽函数
+        self.pushButton_7.clicked.connect(lambda: self.changePyFile(self.self_script_path))  # 选择自定义脚本路径
         self.highlighter = PyHighlighter(self.textEdit_2.document())  # 实例化 格式化代码类
         self.textBrowser.anchorClicked.connect(lambda x: os.popen(f'"{x.toLocalFile()}"'))  # 超链接打开本地文件
         self.checkBox.stateChanged.connect(self.displayFps)  # 帧数显示
         self.checkBox_5.clicked.connect(self.printResult)  # 打印检测结果
-        self.checkBox_6.clicked.connect(lambda: self.changeModelConfig)
+        self.checkBox_6.clicked.connect(self.changeModelConfig)  # 是否返回坐标
         self.checkBox_2.clicked.connect(self.changeModelConfig)  # 是否画锚框
         self.doubleSpinBox.valueChanged.connect(self.changeModelConfig)  # 更改置信度
         self.toolButton_6.clicked.connect(self.changeBoxColor)  # 更改锚框颜色
@@ -332,7 +331,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.dt.model.conf_threshold = self.doubleSpinBox.value()  # 更改置信度
         self.dt.model.iou_threshold = self.doubleSpinBox_2.value()  # 更改IOU
         self.dt.model.draw_box = self.checkBox_2.isChecked()  # 是否显示锚框
-        self.dt.model.print_pos = self.checkBox_6.isChecked()  # 是否返回坐标
+        self.dt.model.with_pos = self.checkBox_6.isChecked()  # 是否返回坐标
 
     def changeBoxColor(self):  # 更改锚框颜色
         old_color = self.dt.model.box_color if self.dt.model else self.box_color
@@ -397,7 +396,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.previewVideo(self.lineEdit_2.text())  # 预览视频
         self.dt.blockSignals(False)
 
-    def selectMediaFile(self):  # 选择媒体文件
+    def changeMediaFile(self):  # 选择媒体文件
         fileDialog = QtWidgets.QFileDialog()
         file_type = ('Video File(*.asf *.avi *.gif *.m4v *.mkv *.mov *.mp4 *.mpeg *.mpg *.ts *.wmv)',
                      'Image File(*.bmp *.dng *.jpeg *.jpg *.mpo *.png *.tif *.tiff *.webp *.pfm)'
@@ -436,13 +435,13 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.dt.model = detect.YOLOv5()
         self.dt.model.initConfig(input_width=640,
                                  input_height=640,
-                                 draw_box=self.checkBox_2.isChecked(),
-                                 box_color=self.box_color,
-                                 txt_color=tuple(255 - x for x in self.box_color),
-                                 thickness=2,
                                  conf_thres=self.doubleSpinBox.value(),
                                  iou_thres=self.doubleSpinBox_2.value(),
+                                 draw_box=self.checkBox_2.isChecked(),
+                                 thickness=2,
                                  class_names=self.textEdit.toPlainText().split(','),
+                                 box_color=self.box_color,
+                                 txt_color=tuple(255 - x for x in self.box_color),
                                  with_pos=self.checkBox_6.isChecked(),
                                  )
 
@@ -463,7 +462,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.dt.stopThread()
             self.dt.wait()
 
-    def selectModel(self):  # 选择权重文件
+    def changeModel(self):  # 选择权重文件
         path, _ = QtWidgets.QFileDialog.getOpenFileName(None, "选择文件",
                                                         os.path.dirname(os.path.abspath(self.lineEdit_3.text())),
                                                         '*.onnx')
@@ -476,7 +475,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             with open(self.class_file, 'r') as f:
                 self.textEdit.setText(f.read().replace('，', ',').replace('|', ',').replace('\n', ','))
 
-    def selectClassFile(self):  # 选择类别文件
+    def changeClassFile(self):  # 选择类别文件
         path, _ = QtWidgets.QFileDialog.getOpenFileName(None, "选择文件",
                                                         os.path.dirname(os.path.abspath(self.class_file)),
                                                         '*.txt')
@@ -485,12 +484,12 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             with open(self.class_file, 'r') as f:
                 self.textEdit.setText(f.read().replace('，', ',').replace('|', ',').replace('\n', ','))
 
-    def selectSaveFile(self):  # 选择保存位置
+    def changeSaveFile(self):  # 选择保存位置
         file_path = QtWidgets.QFileDialog.getExistingDirectory(None, "选择保存位置", self.lineEdit.text())
         if file_path:
             self.lineEdit.setText(file_path)
 
-    def selectPyFile(self, path=None):  # 选择自定义脚本
+    def changePyFile(self, path=None):  # 选择自定义脚本
         if path is None:
             path, _ = QtWidgets.QFileDialog.getOpenFileName(None, "选择文件",
                                                             os.path.dirname(os.path.abspath(self.self_script_path)),
@@ -613,8 +612,8 @@ class ScriptDataAPI(QtCore.QObject):
     def __init__(self, thread):
         super(ScriptDataAPI, self).__init__()
         self.thread: DetectThread = thread
-        self.res_data = None
-        self.img_data = None
+        self.res_data: dict = {}
+        self.img_data: numpy.ndarray
 
     @property
     def help(self):

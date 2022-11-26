@@ -42,15 +42,16 @@ class YOLOv5(object):
         """
         初始化模型配置
         """
+        assert 0 < conf_thres < 1 and 0 < iou_thres < 1
         self.input_width = input_width  # 输入图片宽
         self.input_height = input_height  # 输入图片高
         self.conf_threshold = conf_thres  # 置信度
         self.iou_threshold = iou_thres  # IOU
-        self.class_names = class_names  # 类别
         self.draw_box = draw_box  # 是否画锚框
+        self.thickness = thickness  # 锚框宽度
+        self.class_names = class_names  # 类别
         self.box_color = box_color  # 锚框颜色 BGR
         self.txt_color = txt_color  # 文字颜色 BGR
-        self.thickness = thickness  # 锚框宽度
         self.with_pos = with_pos  # 是否返回坐标
         self.__dict__.update(kwargs)
 

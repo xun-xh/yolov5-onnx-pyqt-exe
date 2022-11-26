@@ -48,9 +48,12 @@ def run(**kwargs):
                          input_height=kwargs['imgsz'][1],
                          conf_thres=kwargs['conf_thres'],
                          iou_thres=kwargs['iou_thres'],
+                         draw_box=True,
+                         thickness=2,
                          class_names=class_names,
                          box_color=(0, 0, 255),
                          txt_color=(255, 255, 0),
+                         with_pos=False,
                          )
         print('\nstart detect, press "ctrl+c" to quit\n')
         for f in file:
