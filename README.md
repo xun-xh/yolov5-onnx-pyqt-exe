@@ -17,6 +17,7 @@
 ---
 
 ### 展示:
+#### 成品下载体验：https://download.kstore.space/download/3190/plugin/publish.zip
 #### 主界面
 > ![主界面](https://img-blog.csdnimg.cn/a52cbae15c7c4fc19ce5476b6374605f.png)
 
