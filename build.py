@@ -6,7 +6,7 @@ import shutil
 def build(main, method):
     parameters = ['nuitka',
                   '--standalone',  # 独立模式
-                  '--mingw64',  # 强制使用 MinGW64
+                  '--mingw64',  # 强制使用MinGW64编译器
                   '--nofollow-imports',  # 不导入任何模块
                   '--plugin-enable=qt-plugins',  # 导入PyQt
                   '--follow-import-to=utils',  # 递归指定的模块或包

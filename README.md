@@ -10,8 +10,9 @@
 
 > - Yolov5训练个人数据集
 > - pt格式模型转换为onnx格式
-> - 使用onnxruntime实现检测
-> - 并在Windows平台打包为可执行程序(Linux理论上也可以打包，但没试过)
+> - 使用openCV的dnn模块或onnxruntime实现检测
+> - 在Windows平台打包为可执行程序(Linux理论上也可以打包，但没试过)
+> - 打包后可移植(部署)到大多数Windows设备
 
 ---
 
@@ -63,8 +64,11 @@
 
 >#### 打包为可执行文件:
 >
-> - 执行`build.py`，打包好的文件位于`build_file/publish`文件夹
 > - 所用库为nuitka，打包命令已经在`build.py`中配置好，如需更高级玩法请自己摸索
+> - 执行`build.py`，打包好的文件位于`build_file/publish`文件夹
+>   1. 此处需注意:真正打包好的文件在`Yolo2onnxDetectProjectDemo.dist`文件夹
+>   2. 为了方便debug和更新，在第一次打包成功后需要将此文件夹内所有的文件复制到`publish`文件夹
+>   3. 双击运行exe文件，根据报错信息将模块也复制到`publish`文件夹内，直到成功运行
 > - 附nuitka的使用方法：[知乎@Python与模具](https://zhuanlan.zhihu.com/p/341099225)
 
 ---
