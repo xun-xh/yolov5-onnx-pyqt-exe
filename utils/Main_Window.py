@@ -535,17 +535,18 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         else:
             text = f"{head_}<font color='{color}'>{text}"
             self.textBrowser.append(text)
-        # 自动解除锁定
-        # scrollbar = self.textBrowser.verticalScrollBar()
-        # movecursor = scrollbar.value() >= scrollbar.maximum()
-        # if not movecursor:
-        #     self.pushButton_8.setChecked(False)
+        # 自动切换锁定状态
+        scrollbar = self.textBrowser.verticalScrollBar()
+        self.pushButton_8.setChecked(scrollbar.value() >= scrollbar.maximum())
         if self.pushButton_8.isChecked():
             self.textBrowser.moveCursor(QtGui.QTextCursor.End)
 
-    def lockBottom(self):  # 锁定底部切换
-        if self.pushButton_8.isChecked():
-            self.textBrowser.verticalScrollBar().setValue(self.textBrowser.verticalScrollBar().maximum())
+    def lockBottom(self, status):  # 锁定底部切换
+        scrollbar = self.textBrowser.verticalScrollBar()
+        if status:
+            scrollbar.setValue(scrollbar.maximum())
+        else:
+            scrollbar.setValue(scrollbar.maximum()-1)
 
     # todo: 更优雅
     def exec(self, text: dict):  # 执行自定义脚本

@@ -244,7 +244,6 @@ class DataLoader(object):
         elif self.is_video:
             if not os.path.exists(path):
                 raise FileNotFoundError(path)
-            self.count = 0
             self.frame_skip = frame_skip
             self.idx = 0
             if frame_skip < 0:
@@ -322,8 +321,7 @@ class DataLoader(object):
             path = self.path
         elif self.is_image and not self.isFinished:
             self.isFinished = True
-            ret = True
-            img = cv2.imread(self.path)
+            ret, img = True, cv2.imread(self.path)
             path = self.path
         else:
             raise StopIteration
