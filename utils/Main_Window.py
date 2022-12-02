@@ -270,7 +270,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.installEventFilter(self)
         self.textEdit_2.installEventFilter(self)
 
-        self.out_video: cv2.VideoWriter
+        self.video_writer: cv2.VideoWriter
         self.box_color = (255, 0, 0)
 
         # 初始化检测线程
@@ -370,7 +370,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # 视频编解码器
             fps = self.spinBox.value()
             width, height = self.dt.dataset.w, self.dt.dataset.h  # 宽高
-            self.out_video = cv2.VideoWriter(self.save_video_path, fourcc, fps, (width, height))  # 写入视频
+            self.video_writer = cv2.VideoWriter(self.save_video_path, fourcc, fps, (width, height))  # 写入视频
             self.save_video = True
             print(f'begin recording...')
         elif index == self.checkBox_4 and not self.checkBox_4.isChecked():
@@ -380,7 +380,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         if not self.save_video:
             return
         self.save_video = False
-        self.out_video.release()
+        self.video_writer.release()
         print(f'Video has been saved to <a href="file:///{self.save_video_path}">{self.save_video_path}</a>')
 
     def indexChanged(self, index):  # 切换输入方式
@@ -517,7 +517,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
 
     def displayImg(self, img: numpy.ndarray):  # 显示图片到label
         if self.save_video:
-            self.out_video.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+            self.video_writer.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
         self.script_api.img_data = img
         img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1] * 3, QImage.Format_RGB888)
         p = min(self.label.width() / img.width(), self.label.height() / img.height())
