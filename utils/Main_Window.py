@@ -425,10 +425,10 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             print('already running')
             return
         if not os.path.exists(self.lineEdit_3.text()):
-            self.displayLog(f'"{self.lineEdit_3.text()}" not exist', 'red')
+            self.displayLog(f'"{self.lineEdit_3.text()}" not exist', color='red')
             return
         if self.comboBox.currentIndex() == 2 and not os.path.exists(self.lineEdit_2.text()):  # 视频
-            self.displayLog(f'"{self.lineEdit_2.text()}" not exist', 'red')
+            self.displayLog(f'"{self.lineEdit_2.text()}" not exist', color='red')
             return
         if 'dataset' not in self.dt.__dict__:
             self.indexChanged(self.comboBox.currentIndex())
@@ -498,7 +498,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                 return
             self.self_script_path = path
         if not os.path.exists(self.self_script_path):
-            self.displayLog(f'"{self.self_script_path}" not exist', 'red')
+            self.displayLog(f'"{self.self_script_path}" not exist', color='red')
             return
         for i in ['utf8', 'gbk']:
             try:
@@ -524,10 +524,10 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         pix = QPixmap(img).scaled(int(img.width() * p), int(img.height() * p))
         self.label.setPixmap(pix)
 
-    def displayLog(self, text: str, color='black'):  # 输出控制台信息到textBrowser
+    def displayLog(self, text: str, color='black', plain_text=False):  # 输出控制台信息到textBrowser
         head_ = f"{datetime.now().strftime('%H:%M:%S.%f')} >> "
 
-        if '<class' in text:
+        if text.startswith(('<', )) or plain_text:
             self.textBrowser.setTextColor(QtGui.QColor('black'))
             self.textBrowser.append(head_)
             self.textBrowser.setTextColor(QtGui.QColor(color))
@@ -557,7 +557,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                 head = '[' + os.path.basename(self.self_script_path) + ']: '
                 for i in args:
                     head = head + str(i) + ' '
-                self.displayLog(head, 'gray')
+                self.displayLog(head, color='gray', plain_text=True)
 
             globals_ = globals().copy()
             globals_['data_api'] = self.script_api
