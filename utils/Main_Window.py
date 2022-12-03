@@ -244,8 +244,8 @@ class DetectThread(QtCore.QThread):
             self.res_sig.emit(res)
             time.sleep(0.0001)
 
+        print(f'{self.dataset.path} finished.')
         del self.dataset
-        print('exit')
         self.stopThread()
 
     def run(self) -> None:
@@ -449,6 +449,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
 
         self.dt.startDetect()
         self.saveToFile(self.checkBox_4)
+        print('start detect')
         self.statusBar().showMessage('start detect...', 5000)
 
     def stop(self):  # 停止检测
@@ -539,7 +540,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         scrollbar = self.textBrowser.verticalScrollBar()
         self.pushButton_8.setChecked(scrollbar.value() >= scrollbar.maximum())
         if self.pushButton_8.isChecked():
-            self.textBrowser.moveCursor(QtGui.QTextCursor.End)
+            scrollbar.setValue(scrollbar.maximum())
 
     def lockBottom(self, status):  # 锁定底部切换
         scrollbar = self.textBrowser.verticalScrollBar()
