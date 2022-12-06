@@ -75,9 +75,9 @@ class YOLOv5(object):
 
     def __inference(self, image: numpy.ndarray) -> list[numpy.ndarray]:
         """
-            :param image: 待检测图像 RGB格式
-            :return:
-            """
+        :param image: 待检测图像 RGB格式
+        :return:
+        """
         input_tensor = self.__prepareInput(image)
         # blob = cv2.dnn.blobFromImage(input_img, 1 / 255.0)
         # Perform inference on the image
@@ -335,6 +335,6 @@ class DataLoader(object):
         return self
 
     def __del__(self):
-        if self.is_wabcam_0 or self.is_wabcam_1 or self.is_video:
+        if 'cap' in self.__dict__:
             self.cap.release()
 

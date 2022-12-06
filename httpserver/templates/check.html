@@ -1,0 +1,18 @@
+<html>
+<style>
+.title { justify-content:center;display:flex !important;font-size:28px;font-weight:normal; }
+.form { justify-content:center;display:flex !important; }
+.img { justify-content: center;display: flex !important;padding: 0 10px 0 10px; }
+.button { max-height: 100px; min-height: 50px !important; min-width: 120px; margin:8px;}
+</style>
+<head>
+    <meta charset="UTF-8">
+    <title>Video Streaming</title>
+</head>
+<body>
+    <div class="title">Video Streaming Demonstration</div>
+    <div class="img">
+        <img src="{{ url_for('video_feed') }}">
+    </div>
+</body>
+</html>
