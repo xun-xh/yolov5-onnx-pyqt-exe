@@ -1,3 +1,4 @@
+# -*coding=utf-8
 """
 自定义脚本,
 每次检测都将触发执行此文件内的代码, 并提供名为"data_api"的接口, 使用print(data_api.help)来获取帮助

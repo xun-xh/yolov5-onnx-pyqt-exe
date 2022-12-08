@@ -1,3 +1,5 @@
+# -*coding=utf-8
+
 import logging
 import os
 import sys
@@ -235,10 +237,10 @@ class DetectThread(QtCore.QThread):
                 fps_count += 1
             if self.display_fps and not self.dataset.is_image:
                 fps_ = f'FPS:{fps}'
-                font_scale = img.shape[0] / 960
-                thickness = (img.shape[0] // 270)
-                (_, h), _ = cv2.getTextSize(fps_, 16, font_scale, thickness)
-                cv2.putText(img, fps_, (10, 10 + h), 16, font_scale, (255, 0, 0), thickness)
+                lw = max(round(sum(img.shape) / 2 * 0.003), 2)
+                tf = max(lw - 1, 1)
+                h = cv2.getTextSize(fps_, 0, lw / 3, tf)[0][1]
+                cv2.putText(img, fps_, (10, 10 + h), 0, lw / 3, (255, 0, 0), tf, cv2.LINE_AA)
 
             self.img_sig.emit(img)
             self.res_sig.emit(res)
@@ -547,7 +549,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         if status:
             scrollbar.setValue(scrollbar.maximum())
         else:
-            scrollbar.setValue(scrollbar.maximum()-1)
+            scrollbar.setValue(scrollbar.maximum() - 1)
 
     # todo: 更优雅
     def exec(self, text: dict):  # 执行自定义脚本

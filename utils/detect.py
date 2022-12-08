@@ -1,3 +1,5 @@
+# -*coding=utf-8
+
 import os
 import threading
 import time
@@ -42,7 +44,7 @@ class YOLOv5(object):
         """
         初始化模型配置
         """
-        assert 0 < conf_thres < 1 and 0 < iou_thres < 1
+        assert 0 < conf_thres <= 1 and 0 < iou_thres <= 1
         self.input_width = input_width  # 输入图片宽
         self.input_height = input_height  # 输入图片高
         self.conf_threshold = conf_thres  # 置信度
