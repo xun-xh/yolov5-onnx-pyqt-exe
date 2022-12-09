@@ -11,9 +11,9 @@ English | [简体中文](../README.md)
 
 ### Implementation
 
-> - Train custom dataset with yolov5
-> - export pt format to onnx format
-> - inference with openCV.dnn or onnxruntime
+> - Train custom dataset with **yolov5**
+> - Export **pt** format to **onnx** format
+> - Inference with **openCV.dnn** or **onnxruntime**
 > - Package as executable program on Windows platform (Linux can also be packaged in theory, but it has not been tried)
 > - Portable (deployed) to most Windows devices after packaging
 
@@ -21,11 +21,11 @@ English | [简体中文](../README.md)
 
 ### Preview
 
-#### download the demo：<https://download.kstore.space/download/3190/plugin/publish.zip>
+#### ***download the demo：<https://download.kstore.space/download/3190/plugin/publish.zip>***
 
 > ![main window](https://img-blog.csdnimg.cn/a52cbae15c7c4fc19ce5476b6374605f.png)
 
-#### **Function**
+#### ***Function***
 >
 > 1. support image, video, webcam
 > 2. real time frame rate
@@ -55,7 +55,7 @@ English | [简体中文](../README.md)
 
 ### Tutorials
 
-> #### Quickstart
+> #### ***Quickstart***
 >
 > - Clone this Repo
 > - Install requirements, `pip install -r requirements.txt`
@@ -63,15 +63,15 @@ English | [简体中文](../README.md)
 > - Then you will see the GUI
 > - Click `启动检测`
 >
->#### Train costom data and export to onnx model
+>#### ***Train costom data and export to onnx model***
 >
 > - [Yolov5 v5.0](https://github.com/ultralytics/yolov5/tree/v5.0) is recommended
 > - How to train?[目标检测---教你利用yolov5训练自己的目标检测模型](https://blog.csdn.net/jiaoty19/article/details/125614783)
-> - [Export](https://github.com/ultralytics/yolov5/issues/251) to onnx format: `python models/export.py --weights ./weights/yolov5s.pt --img 640 --batch 1`
+> - [Export](https://github.com/ultralytics/yolov5/issues/251) to **onnx** format: `python models/export.py --weights ./weights/yolov5s.pt --img 640 --batch 1`
 >
->#### Packaging an executable file
+>#### ***Packaging an executable file***
 >
-> - The module used is nuitka, and the command has been configured in `build.py`. If you need more advanced playing methods, please see [https://nuitka.net/](https://nuitka.net/)
+> - The module used is **nuitka**, and the command has been configured in `build.py`. If you need more advanced playing methods, please see [https://nuitka.net/](https://nuitka.net/)
 > - Run `build.py`, finished products are located in `build_file/publish` folder
 >   1. Tips:the truly finished products are in the `Yolo2onnxDetectProjectDemo.dist` folder
 >   2. To facilitate debugging and updating, all files in this folder need to be copied to the `publish` folder after the first packaging is successful
