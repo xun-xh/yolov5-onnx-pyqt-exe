@@ -71,7 +71,7 @@ English | [简体中文](.github/README_CN.md)
 >
 >#### Packaging an executable file
 >
-> - The module used is nuitka, and the command has been configured in `build. py`. If you need more advanced playing methods, please see [https://nuitka.net/](https://nuitka.net/)
+> - The module used is nuitka, and the command has been configured in `build.py`. If you need more advanced playing methods, please see [https://nuitka.net/](https://nuitka.net/)
 > - Run `build.py`, finished products are located in `build_file/publish` folder
 >   1. Tips:the truly finished products are in the `Yolo2onnxDetectProjectDemo.dist` folder
 >   2. To facilitate debugging and updating, all files in this folder need to be copied to the `publish` folder after the first packaging is successful
