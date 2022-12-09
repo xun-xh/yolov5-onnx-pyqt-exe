@@ -14,7 +14,7 @@ from PyQt5.QtGui import QImage, QPixmap, QCloseEvent
 from utils import detect
 from utils.resource import Yolo2onnx_detect_Demo_UI, resource_rc
 
-print(resource_rc)  # 不能删，否则打包会提示ModuleNotFoundError
+resource_rc.qInitResources()
 
 
 class StdOut(QtCore.QObject):

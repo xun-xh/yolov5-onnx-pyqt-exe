@@ -18,7 +18,7 @@ def build(main, method):
     elif method == "1":
         path = os.path.join(os.getcwd(), output_dir, 'release')
         parameters.append("--windows-disable-console")  # 禁用控制台窗口
-        parameters.append("--windows-uac-admin")  # UAC
+        # parameters.append("--windows-uac-admin")  # UAC
         parameters.append(f'--output-dir="{path}"')  # 指定最终文件的输出目录
     else:
         raise ValueError
