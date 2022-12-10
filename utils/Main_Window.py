@@ -321,7 +321,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.pushButton_6.setHidden(True)  # 暂停按钮, 暂时隐藏
 
     # todo
-    def loadConfig(self, **kwargs):
+    def loadConfig(self, **kwargs):  # 加载配置
         self.setSource(0, start=True)
         self.lineEdit_3.setText('need/models/yolov7-tiny.onnx')  # # 初始化模型路径
         self.lineEdit_2.setText('example.mp4')
@@ -416,7 +416,6 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
 
     def setSource(self, source, start=False, preview=False, **kwargs) -> bool:  # 设置输入源
         self.source = str(source)
-        print(self.source)
         try:
             self.dt.dataset = detect.DataLoader(self.source, **kwargs)
         except Exception as e:
@@ -469,7 +468,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                                  with_pos=self.checkBox_6.isChecked(),
                                  )
 
-        self.dt.model.initModel(self.lineEdit_3.text(), t=None)  # cv2.dnn or onnxruntime
+        self.dt.model.initModel(self.lineEdit_3.text(), t='onnxruntime')  # cv2.dnn or onnxruntime
 
         self.dt.startDetect()
         self.saveToFile(self.checkBox_4)
