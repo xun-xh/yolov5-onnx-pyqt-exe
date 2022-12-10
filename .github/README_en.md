@@ -12,7 +12,7 @@ English | [简体中文](../README.md)
 * [Implementation](#implementation)
 * [Preview](#preview)
   * [download the demo](#download-the-demohttpsdownloadkstorespacedownload3190pluginpublishzip)
-  * [main window](#preview)
+  * [main window](#main-window)
   * [feature](#feature)
 * [Requirement](#requirement)
 * [Tutorials](#tutorials)
@@ -35,6 +35,8 @@ English | [简体中文](../README.md)
 ### Preview
 
 #### ***download the demo：<https://download.kstore.space/download/3190/plugin/publish.zip>***
+
+#### ***main window***:
 
 > ![main window](https://img-blog.csdnimg.cn/a52cbae15c7c4fc19ce5476b6374605f.png)
 
