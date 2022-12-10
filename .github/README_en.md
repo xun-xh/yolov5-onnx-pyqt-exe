@@ -9,13 +9,25 @@ English | [简体中文](../README.md)
 
 ---
 
+* [Implementation](#implementation)
+* [Preview](#preview)
+  * [download the demo](#download-the-demohttpsdownloadkstorespacedownload3190pluginpublishzip)
+  * [feature](#feature)
+* [Requirement](#requirement)
+* [Tutorials](#tutorials)
+  * [quickstart](#quickstart)
+  * [train custom data and export to onnx model](#train-custom-data-and-export-to-onnx-model)
+  * [packaging an executable file](#packaging-an-executable-file)
+
+---
+
 ### Implementation
 
-> - Train custom dataset with **yolov5**
-> - Export **pt** format to **onnx** format
-> - Inference with **openCV.dnn** or **onnxruntime**
-> - Package as executable program on Windows platform (Linux can also be packaged in theory, but it has not been tried)
-> - Portable (deployed) to most Windows devices after packaging
+> * Train custom dataset with **yolov5**
+> * Export **pt** format to **onnx** format
+> * Inference with **openCV.dnn** or **onnxruntime**
+> * Package as executable program on Windows platform (Linux can also be packaged in theory, but it has not been tried)
+> * Portable (deployed) to most Windows devices after packaging
 
 ---
 
@@ -25,7 +37,7 @@ English | [简体中文](../README.md)
 
 > ![main window](https://img-blog.csdnimg.cn/a52cbae15c7c4fc19ce5476b6374605f.png)
 
-#### ***Function***
+#### ***Feature***
 >
 > 1. support image, video, webcam, RTSP/RTMP/HTTP streams, screenshot
 > 2. real time frame rate
@@ -44,12 +56,12 @@ English | [简体中文](../README.md)
 
 ### Requirement
 
-> - python >= 3.9
-> - numpy == 1.23.4
-> - opencv-python == 4.5.5.62
-> - PyQt5 == 5.15.7
-> - onnxruntime == 1.13.1
-> - nuitka == 0.6.18.4
+> * python >= 3.9
+> * numpy == 1.23.4
+> * opencv-python == 4.5.5.62
+> * PyQt5 == 5.15.7
+> * onnxruntime == 1.13.1
+> * nuitka == 0.6.18.4
 
 ---
 
@@ -57,22 +69,22 @@ English | [简体中文](../README.md)
 
 > #### ***Quickstart***
 >
-> - Clone this Repo
-> - Install requirements: `pip install -r requirements.txt`
-> - Run `Yolo2onnxDetectProjectDemo.py`
-> - Then you will see the GUI
-> - Click `▶` button
+> * Clone this Repo
+> * Install requirements: `pip install -r requirements.txt`
+> * Run `Yolo2onnxDetectProjectDemo.py`
+> * Then you will see the GUI
+> * Click `▶` button
 >
 >#### ***Train custom data and export to onnx model***
 >
-> - [Yolov5 v5.0](https://github.com/ultralytics/yolov5/tree/v5.0) is recommended
-> - How to train?[目标检测---教你利用yolov5训练自己的目标检测模型](https://blog.csdn.net/jiaoty19/article/details/125614783)
-> - [Export](https://github.com/ultralytics/yolov5/issues/251) to **onnx** format: `python models/export.py --weights ./weights/yolov5s.pt --img 640 --batch 1`
+> * [Yolov5 v5.0](https://github.com/ultralytics/yolov5/tree/v5.0) is recommended
+> * How to train?[目标检测---教你利用yolov5训练自己的目标检测模型](https://blog.csdn.net/jiaoty19/article/details/125614783)
+> * [Export](https://github.com/ultralytics/yolov5/issues/251) to **onnx** format: `python models/export.py --weights ./weights/yolov5s.pt --img 640 --batch 1`
 >
 >#### ***Packaging an executable file***
 >
-> - The module used is **nuitka**, and the command has been configured in `build.py`. If you need more advanced playing methods, please see <https://nuitka.net/>
-> - Run `build.py`, finished products are located in `build_file/publish` folder
+> * The module used is **nuitka**, and the command has been configured in `build.py`. If you need more advanced playing methods, please see <https://nuitka.net/>
+> * Run `build.py`, finished products are located in `build_file/publish` folder
 >   1. Tips:the truly finished products are in the `Yolo2onnxDetectProjectDemo.dist` folder
 >   2. To facilitate debugging and updating, all files in this folder need to be copied to the `publish` folder after the first packaging is successful
 >   3. Double click to run the exe file, and copy the module to the `publish` folder according to the exception,  until it runs successfully
