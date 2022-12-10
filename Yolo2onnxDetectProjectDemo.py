@@ -70,7 +70,7 @@ def run(**kwargs):
             if dataset.is_video and (not kwargs['video_split']):
                 dst_path = os.path.join(kwargs['save_path'], os.path.basename(f))
                 print(dst_path)
-                out_v = cv2.VideoWriter(dst_path, cv2.VideoWriter_fourcc(*'mp4v'), dataset.fps, (dataset.w, dataset.h))
+                video_writer = cv2.VideoWriter(dst_path, cv2.VideoWriter_fourcc(*'mp4v'), dataset.fps, (dataset.w, dataset.h))
 
             count = 0
             for img, base_name in dataset:
@@ -88,7 +88,7 @@ def run(**kwargs):
                         cv2.imwrite(os.path.join(dst_path, f'{base_name}_{count}.png'), img)
                         # print(os.path.join(dst_path, base_name))
                     else:
-                        out_v.write(img)
+                        video_writer.write(img)
             log_file.close()
             print('finished in %.3f s' % (time.time() - start_time))
 

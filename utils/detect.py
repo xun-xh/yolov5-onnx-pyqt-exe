@@ -225,30 +225,31 @@ class DataLoader(object):
     """逐帧加载图像，返回RGB格式"""
     VIDEO_TYPE = ('asf', 'avi', 'gif', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'ts', 'wmv')
     IMAGE_TYPE = ('bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm')
+    URL_TYPE = ('rtsp://', 'rtmp://', 'http://', 'https://')
 
     def __init__(self, path: Union[int, str], frame_skip=-1):
         """
         :param path: image/video path
         :param frame_skip: frame skip or not, <0: auto; =0: dont skip; >0: skip  # video only
         """
-        self.isFinished = False
-        self.path = path
-        self.is_wabcam_0 = path == 0
-        self.is_wabcam_1 = path == 1
-        self.is_video = isinstance(path, str) and path.endswith(DataLoader.VIDEO_TYPE)
-        self.is_image = isinstance(path, str) and path.endswith(DataLoader.IMAGE_TYPE)
-        assert self.is_wabcam_0 or self.is_wabcam_1 or self.is_video or self.is_image, '?'
+        self.path = str(path)
+        self.is_wabcam = self.path.isnumeric()
+        self.is_video = os.path.isfile(self.path) and self.path.lower().endswith(DataLoader.VIDEO_TYPE) and os.path.exists(self.path)
+        self.is_image = os.path.isfile(self.path) and self.path.lower().endswith(DataLoader.IMAGE_TYPE) and os.path.exists(self.path)
+        self.is_screen = self.path.startswith('screen')
+        self.is_url = self.path.lower().startswith(DataLoader.URL_TYPE)
+        assert self.is_wabcam or self.is_video or self.is_image or self.is_screen or self.is_url, \
+            'invalid or unsupported file format'
 
-        if self.is_wabcam_0 or self.is_wabcam_1:
-            self.cap = cv2.VideoCapture(path, cv2.CAP_DSHOW)
+        if self.is_wabcam:
+            self.cap = cv2.VideoCapture(int(self.path), cv2.CAP_DSHOW)
             self.w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             self.h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        elif self.is_video:
-            if not os.path.exists(path):
-                raise FileNotFoundError(path)
-            self.frame_skip = frame_skip
+            assert self.cap.isOpened()
+        elif self.is_video or self.is_image or self.is_url:
+            self.frame_skip = frame_skip if not self.is_image else 0
             self.idx = 0
-            if frame_skip < 0:
+            if self.frame_skip < 0:
                 class VideoFrameDraw(threading.Thread):
                     def __init__(self):
                         super(VideoFrameDraw, self).__init__(daemon=True)
@@ -256,11 +257,12 @@ class DataLoader(object):
                         self.grab = self.cap.grab
                         self.isOpened = self.cap.isOpened
                         self.release = self.cap.release
+                        assert self.cap.isOpened()
 
                         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
                         self.frame_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
                         self.w, self.h = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH), self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-                        self.ret = self.cap.grab() if self.cap.isOpened() else False
+                        self.ret = self.cap.grab()
                         if not self.ret:
                             return
                         self.ret, self.img = self.cap.retrieve()
@@ -299,20 +301,37 @@ class DataLoader(object):
                 self.w, self.h = int(self.cap.w), int(self.cap.h)
                 self.fps = self.cap.fps
             else:  # frame_skip >= 0
-                self.cap = cv2.VideoCapture(path)
+                self.cap = cv2.VideoCapture(self.path)
                 self.w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 self.h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                 self.fps = self.cap.get(cv2.CAP_PROP_FPS)
-        elif self.is_image:
-            if not os.path.exists(path):
-                raise FileNotFoundError(path)
+            assert self.cap.isOpened()
+        elif self.is_screen:
+            import mss
+            _, *params = self.path.split()
+            screen, left, top, width, height = 0, None, None, None, None  # default to full screen 0
+            if len(params) == 1:
+                screen = int(params[0])
+            elif len(params) == 4:
+                left, top, width, height = (int(x) for x in params)
+            elif len(params) == 5:
+                screen, left, top, width, height = (int(x) for x in params)
+            self.sct = mss.mss()
+
+            # Parse monitor shape
+            monitor = self.sct.monitors[screen]
+            top = monitor["top"] if top is None else (monitor["top"] + top)
+            left = monitor["left"] if left is None else (monitor["left"] + left)
+            width = width or monitor["width"]
+            height = height or monitor["height"]
+            self.monitor = {"left": left, "top": top, "width": width, "height": height}
 
     def __next__(self) -> tuple[numpy.ndarray, str]:
-        if (self.is_wabcam_0 or self.is_wabcam_1) and self.cap.isOpened():
+        if self.is_wabcam:
             ret, img = self.cap.read()
-            if self.is_wabcam_0: img = cv2.flip(img, 1)
+            if self.path == '0': img = cv2.flip(img, 1)
             path = ''
-        elif self.is_video and self.cap.isOpened():
+        elif self.is_video or self.is_image or self.is_url:
             while self.idx <= self.frame_skip:
                 ret = self.cap.grab()
                 self.idx += 1
@@ -321,10 +340,10 @@ class DataLoader(object):
             ret, img = self.cap.retrieve()
             self.idx = 0
             path = self.path
-        elif self.is_image and not self.isFinished:
-            self.isFinished = True
-            ret, img = True, cv2.imread(self.path)
-            path = self.path
+        elif self.is_screen:
+            ret = True
+            img = numpy.array(self.sct.grab(self.monitor))[:, :, :3]
+            path = ''
         else:
             raise StopIteration
 

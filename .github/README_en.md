@@ -3,7 +3,7 @@
 ---
 English | [简体中文](../README.md)
 
-## \***If you encounter an unsolvable problem, [issue](https://github.com/xun-xh/yolov5-onnx-pyqt-exe/issues/new/choose) are allowed**\*
+## \***If you encounter an unsolvable problem, [issue](https://github.com/xun-xh/yolov5-onnx-pyqt-exe/issues) are allowed**\*
 
 ## \***Welcome to star**\*
 
@@ -27,7 +27,7 @@ English | [简体中文](../README.md)
 
 #### ***Function***
 >
-> 1. support image, video, webcam
+> 1. support image, video, webcam, RTSP/RTMP/HTTP streams, screenshot
 > 2. real time frame rate
 > 3. redirect stdout to GUI
 > 4. change conf_thres and iou_thres at any time
@@ -58,10 +58,10 @@ English | [简体中文](../README.md)
 > #### ***Quickstart***
 >
 > - Clone this Repo
-> - Install requirements, `pip install -r requirements.txt`
+> - Install requirements: `pip install -r requirements.txt`
 > - Run `Yolo2onnxDetectProjectDemo.py`
 > - Then you will see the GUI
-> - Click `启动检测`
+> - Click `▶` button
 >
 >#### ***Train costom data and export to onnx model***
 >
@@ -71,7 +71,7 @@ English | [简体中文](../README.md)
 >
 >#### ***Packaging an executable file***
 >
-> - The module used is **nuitka**, and the command has been configured in `build.py`. If you need more advanced playing methods, please see [https://nuitka.net/](https://nuitka.net/)
+> - The module used is **nuitka**, and the command has been configured in `build.py`. If you need more advanced playing methods, please see <https://nuitka.net/>
 > - Run `build.py`, finished products are located in `build_file/publish` folder
 >   1. Tips:the truly finished products are in the `Yolo2onnxDetectProjectDemo.dist` folder
 >   2. To facilitate debugging and updating, all files in this folder need to be copied to the `publish` folder after the first packaging is successful
