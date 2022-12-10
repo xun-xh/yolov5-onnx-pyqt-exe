@@ -169,7 +169,7 @@ class DetectThread(QtCore.QThread):
     def __init__(self, model: detect.YOLOv5 = None, dataset: detect.DataLoader = None):
         super(DetectThread, self).__init__()
         self.is_pause = False
-        self.is_running = True
+        self.is_running = False
         self.is_detecting = False
         self.model = model
         self.dataset: detect.DataLoader = dataset
@@ -258,28 +258,36 @@ class DetectThread(QtCore.QThread):
 class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
     def __init__(self, **kwargs):
         super(MainWindow, self).__init__()
+
+        # setup ui, connect callback
         self.setupUi(self)
         self.statusBar().showMessage('initializing...')
+        self.UI()
 
+        # init params
         self.save_video = False
         self.source = ''
-        self.dt = DetectThread()
-        self.script_api = ScriptDataAPI(self.dt)
+        self.video_writer: cv2.VideoWriter
+        self.box_color = (255, 0, 0)
 
-        self.UI()
-        self.loadConfig(**kwargs)
+        # install event
         self.installEventFilter(self)
         self.textEdit_2.installEventFilter(self)
         self.setAcceptDrops(True)
 
-        self.video_writer: cv2.VideoWriter
-        self.box_color = (255, 0, 0)
-
-        # 初始化检测线程
+        # init detect thread
+        self.dt = DetectThread()
         self.dt.img_sig.connect(self.displayImg)
         self.dt.res_sig.connect(self.exec)
         self.dt.finished.connect(lambda: self.statusBar().showMessage('exit'))
         self.dt.finished.connect(self.stop)
+
+        # init script api
+        self.script_api = ScriptDataAPI(self.dt)
+        self.script_api.start_sig.connect(lambda x: self.start() if x else self.stop())
+
+        self.loadConfig(**kwargs)
+
         self.statusBar().showMessage('initialized', 5000)
 
     def UI(self):  # 槽函数
@@ -308,15 +316,13 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.checkBox_3.clicked.connect(lambda x: print(f'script {x}'))
         self.pushButton_8.toggled.connect(self.lockBottom)  # 锁定切换 槽函数
         self.pushButton_10.clicked.connect(lambda: self.textBrowser.clear())  # 清空控制台
-        self.script_api.start_sig.connect(lambda x: self.start() if x else self.stop())
+        self.pushButton_9.clicked.connect(self.resetSource)  # 重置输入源
 
         self.pushButton_6.setHidden(True)  # 暂停按钮, 暂时隐藏
 
+    # todo
     def loadConfig(self, **kwargs):
-        self.comboBox.blockSignals(True)
-        self.comboBox.setCurrentIndex(0)
-        self.indexChanged(self.comboBox.currentIndex())
-        self.comboBox.blockSignals(False)
+        self.setSource(0, start=True)
         self.lineEdit_3.setText('need/models/yolov7-tiny.onnx')  # # 初始化模型路径
         self.lineEdit_2.setText('example.mp4')
         self.class_file = 'need/yolov7-tiny.txt'
@@ -326,7 +332,6 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.doubleSpinBox_2.setValue(0.5)
         self.lineEdit.setText(os.path.join(os.getcwd(), 'out'))  # 初始化保存路径
         self.self_script_path = os.path.join('need', 'self_demo.py')  # 初始化自定义脚本路径
-        self.dt.startThread()
 
     def changeModelConfig(self):  # 更改模型配置
         if self.dt.model is None:
@@ -379,12 +384,17 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         elif index == self.checkBox_4 and not self.checkBox_4.isChecked():
             self.stopRecord()
 
-    def stopRecord(self):
+    def stopRecord(self):  # 停止录制
         if not self.save_video:
             return
         self.save_video = False
         self.video_writer.release()
         print(f'Video has been saved to <a href="file:///{self.save_video_path}">{self.save_video_path}</a>')
+
+    def resetSource(self):  # 重置输入源
+        if self.dt.is_detecting:
+            return
+        self.indexChanged(self.comboBox.currentIndex())
 
     def indexChanged(self, index):  # 切换输入方式
         self.stopRecord()
@@ -392,25 +402,35 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.dt.stopThread()
         self.dt.wait()
         if index == 0:  # webcam
-            self.dt.dataset = detect.DataLoader(self.comboBox.currentIndex())
-            self.dt.startThread()
+            self.setSource('0', start=True)
         elif index == 1 and os.path.exists(self.lineEdit_2.text()):  # file
-            self.dt.dataset = detect.DataLoader(self.lineEdit_2.text(), -1)  # -1自动跳帧，0不跳帧，>1跳帧
-            self.previewVideo(self.lineEdit_2.text())  # 预览
-        elif index == 2 or index == 4:  # rtsp or
+            self.setSource(self.lineEdit_2.text(), preview=True, frame_skip=-1)
+        elif index == 2 or index == 4:  # url or custom data
             text, flag = QtWidgets.QInputDialog.getText(self, 'Custom Source', 'input:', text=self.source)
             if not flag:
                 return
-            try:
-                self.source = text
-                self.dt.dataset = detect.DataLoader(text)
-                self.dt.startThread()
-            except Exception as e:
-                logging.exception(e)
+            self.setSource(text, start=True)
         elif index == 3:  # screen
-            self.dt.dataset = detect.DataLoader('screen', -1)
-            self.dt.startThread()
+            self.setSource('screen', start=True, frame_skip=-1)
         self.dt.blockSignals(False)
+
+    def setSource(self, source, start=False, preview=False, **kwargs) -> bool:  # 设置输入源
+        self.source = str(source)
+        print(self.source)
+        try:
+            self.dt.dataset = detect.DataLoader(self.source, **kwargs)
+        except Exception as e:
+            self.label.setText(str(e))
+            print(e)
+            return False
+        if start:
+            self.dt.startThread()
+        if preview:
+            vc = cv2.VideoCapture(self.source)
+            _, img = vc.read()
+            self.displayImg(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            vc.release()
+        return 'dataset' in self.dt.__dict__.keys()
 
     def changeMediaFile(self):  # 选择媒体文件
         fileDialog = QtWidgets.QFileDialog()
@@ -421,16 +441,8 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         fileDialog.setDirectory(os.path.dirname(os.path.abspath(self.lineEdit_2.text())))
         if fileDialog.exec() != QtWidgets.QFileDialog.Accepted:
             return
-        self.lineEdit_2.setText('|'.join(fileDialog.selectedFiles()))  # 设置路径
-        # 预览视频
-        if self.comboBox.currentIndex() == 1:
-            self.previewVideo(fileDialog.selectedFiles()[0])
-
-    def previewVideo(self, path):
-        vc = cv2.VideoCapture(path)
-        _, img = vc.read()
-        self.displayImg(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        vc.release()
+        self.setSource('|'.join(fileDialog.selectedFiles()), preview=True)
+        self.lineEdit_2.setText(self.source)  # 设置路径
 
     def start(self):  # 启动检测线程
         if self.dt.is_detecting:
@@ -442,8 +454,8 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         if self.comboBox.currentIndex() == 1 and not os.path.exists(self.lineEdit_2.text()):  # 视频
             self.displayLog(f'"{self.lineEdit_2.text()}" not exist', color='red')
             return
-        if 'dataset' not in self.dt.__dict__:
-            self.indexChanged(self.comboBox.currentIndex())
+        if 'dataset' not in self.dt.__dict__.keys() and not self.setSource(self.source):
+            return
         self.dt.model = detect.YOLOv5()
         self.dt.model.initConfig(input_width=640,
                                  input_height=640,
@@ -465,7 +477,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.statusBar().showMessage('start detect...', 5000)
 
     # todo
-    def pause(self):
+    def pause(self):  # 暂停
         pass
 
     def stop(self):  # 停止检测

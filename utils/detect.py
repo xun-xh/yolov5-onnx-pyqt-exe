@@ -239,13 +239,13 @@ class DataLoader(object):
         self.is_screen = self.path.startswith('screen')
         self.is_url = self.path.lower().startswith(DataLoader.URL_TYPE)
         assert self.is_wabcam or self.is_video or self.is_image or self.is_screen or self.is_url, \
-            'invalid or unsupported file format'
+            f'invalid or unsupported file format: {self.path}'
 
         if self.is_wabcam:
             self.cap = cv2.VideoCapture(int(self.path), cv2.CAP_DSHOW)
             self.w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             self.h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            assert self.cap.isOpened()
+            assert self.cap.isOpened(), f'Failed to open {self.path}'
         elif self.is_video or self.is_image or self.is_url:
             self.frame_skip = frame_skip if not self.is_image else 0
             self.idx = 0
@@ -305,7 +305,7 @@ class DataLoader(object):
                 self.w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 self.h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                 self.fps = self.cap.get(cv2.CAP_PROP_FPS)
-            assert self.cap.isOpened()
+            assert self.cap.isOpened(), f'Failed to open {self.path}'
         elif self.is_screen:
             import mss
             _, *params = self.path.split()

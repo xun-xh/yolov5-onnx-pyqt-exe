@@ -35,7 +35,7 @@ English | [简体中文](../README.md)
 > 6. print/hide inference result
 > 7. record video
 > 8. save screenshot or log
-> 9. costom script, triggered on each picture(see the `need/self_demo.py`)
+> 9. custom script, triggered on each picture(see the `need/self_demo.py`)
 >
 > ![function](https://img-blog.csdnimg.cn/93bfdb8ebb844f78b1fb36745d4188a4.png#pic_center)
 > ![img_2.png](https://img-blog.csdnimg.cn/d2651fe582694c40b818a798aeb154b6.png#pic_center)
@@ -63,7 +63,7 @@ English | [简体中文](../README.md)
 > - Then you will see the GUI
 > - Click `▶` button
 >
->#### ***Train costom data and export to onnx model***
+>#### ***Train custom data and export to onnx model***
 >
 > - [Yolov5 v5.0](https://github.com/ultralytics/yolov5/tree/v5.0) is recommended
 > - How to train?[目标检测---教你利用yolov5训练自己的目标检测模型](https://blog.csdn.net/jiaoty19/article/details/125614783)

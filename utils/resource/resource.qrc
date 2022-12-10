@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="icon">
+    <file>icon/reset.svg</file>
     <file>icon/folder.svg</file>
     <file>icon/screenshot.svg</file>
     <file>icon/pause.svg</file>
