@@ -9,9 +9,9 @@ from datetime import datetime
 import cv2
 import numpy
 from PyQt5 import QtCore, QtWidgets, QtGui
-from PyQt5.QtGui import QImage, QPixmap, QCloseEvent
+from PyQt5.QtCore import QCoreApplication
 
-from utils import detect
+from utils import detect, general
 from utils.resource import Yolo2onnx_detect_Demo_UI, resource_rc
 
 resource_rc.qInitResources()
@@ -256,7 +256,7 @@ class DetectThread(QtCore.QThread):
 
 # noinspection PyAttributeOutsideInit
 class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
-    def __init__(self, **kwargs):
+    def __init__(self):
         super(MainWindow, self).__init__()
 
         # setup ui, connect callback
@@ -265,6 +265,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.UI()
 
         # init params
+        self.self_script_path = ''
         self.save_video = False
         self.source = ''
         self.video_writer: cv2.VideoWriter
@@ -286,7 +287,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.script_api = ScriptDataAPI(self.dt)
         self.script_api.start_sig.connect(lambda x: self.start() if x else self.stop())
 
-        self.loadConfig(**kwargs)
+        self.loadConfig()
 
         self.statusBar().showMessage('initialized', 5000)
 
@@ -320,18 +321,62 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
 
         self.pushButton_6.setHidden(True)  # 暂停按钮, 暂时隐藏
 
-    # todo
-    def loadConfig(self, **kwargs):  # 加载配置
-        self.setSource(0, start=True)
-        self.lineEdit_3.setText('need/models/yolov7-tiny.onnx')  # # 初始化模型路径
-        self.lineEdit_2.setText('example.mp4')
-        self.class_file = 'need/yolov7-tiny.txt'
+    def loadConfig(self):  # 加载配置
+        cfg = general.cfg('config.cfg')
+        # input_source
+        self.setSource(cfg.search('root', 'input_source', default_value=0))
+        # model_path
+        self.lineEdit_3.setText(cfg.search('root', 'model_path', os.path.join('need', 'models', 'yolov7-tiny.onnx')))
+        # class_path
+        self.class_file = cfg.search('root', 'class_path', os.path.join('need', 'yolov7-tiny.txt'))
         if os.path.exists(self.class_file):
             self.textEdit.setText(open(self.class_file, 'r').read().replace('\n', ','))  # 初始化类别
-        self.doubleSpinBox.setValue(0.5)
-        self.doubleSpinBox_2.setValue(0.5)
-        self.lineEdit.setText(os.path.join(os.getcwd(), 'out'))  # 初始化保存路径
-        self.self_script_path = os.path.join('need', 'self_demo.py')  # 初始化自定义脚本路径
+        # display_fps
+        self.checkBox.setChecked(cfg.search('root', 'display_fps', default_value=True, return_type=bool))
+        # conf_thres
+        self.doubleSpinBox.setValue(cfg.search('root', 'conf_thres', default_value=0.5, return_type=float))
+        # iou_thres
+        self.doubleSpinBox_2.setValue(cfg.search('root', 'iou_thres', default_value=0.5, return_type=float))
+        # display_box
+        self.checkBox_2.setChecked(cfg.search('root', 'display_box', default_value=True, return_type=bool))
+        # box_color
+        self.changeBoxColor(tuple(map(int, cfg.search('root', 'box_color', default_value='255,0,0').split(','))))
+        # print_result
+        self.checkBox_5.setChecked(cfg.search('root', 'print_result', default_value=True, return_type=bool))
+        # with_pos
+        self.checkBox_6.setChecked(cfg.search('root', 'with_pos', default_value=False, return_type=bool))
+        # record_video
+        self.checkBox_4.setChecked(cfg.search('root', 'record_video', default_value=False, return_type=bool))
+        # record_fps
+        self.spinBox.setValue(cfg.search('root', 'record_fps', default_value=15, return_type=int))
+        # out_path
+        self.lineEdit.setText(cfg.search('root', 'out_path', default_value=os.path.join(os.getcwd(), 'out')))
+        # script_path
+        self.changePyFile(cfg.search('root', 'script_path', default_value=os.path.join('need', 'self_demo.py')))
+        # script_status
+        self.checkBox_3.setChecked(cfg.search('root', 'script_status', default_value=False, return_type=bool))
+        # detect_status
+        if cfg.search('root', 'detect_status', default_value=False, return_type=bool):
+            self.start()
+
+    def saveConfig(self):  # 保存配置
+        with general.cfg('config.cfg') as cfg:
+            cfg.set('root', 'detect_status', self.dt.is_detecting)
+            cfg.set('root', 'input_source', self.source)
+            cfg.set('root', 'model_path', self.lineEdit_3.text())
+            cfg.set('root', 'class_path', self.class_file)
+            cfg.set('root', 'display_fps', self.checkBox.isChecked())
+            cfg.set('root', 'conf_thres', self.doubleSpinBox.value())
+            cfg.set('root', 'iou_thres', self.doubleSpinBox_2.value())
+            cfg.set('root', 'display_box', self.checkBox_2.isChecked())
+            cfg.set('root', 'box_color', ','.join(map(str, self.box_color)))
+            cfg.set('root', 'print_result', self.checkBox_5.isChecked())
+            cfg.set('root', 'with_pos', self.checkBox_6.isChecked())
+            cfg.set('root', 'record_video', self.checkBox_4.isChecked())
+            cfg.set('root', 'record_fps', self.spinBox.value())
+            cfg.set('root', 'out_path', self.lineEdit.text())
+            cfg.set('root', 'script_path', self.self_script_path)
+            cfg.set('root', 'script_status', self.checkBox_3.isChecked())
 
     def changeModelConfig(self):  # 更改模型配置
         if self.dt.model is None:
@@ -341,13 +386,15 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.dt.model.draw_box = self.checkBox_2.isChecked()  # 是否显示锚框
         self.dt.model.with_pos = self.checkBox_6.isChecked()  # 是否返回坐标
 
-    def changeBoxColor(self):  # 更改锚框颜色
-        old_color = self.dt.model.box_color if self.dt.model else self.box_color
-        new_color = QtWidgets.QColorDialog.getColor(QtGui.QColor(*old_color))
-        if not new_color.isValid():
-            return
-        self.toolButton_6.setStyleSheet(f"color:rgb{new_color.getRgb()[0:3]}")
-        self.box_color = new_color.getRgb()[0:3]
+    def changeBoxColor(self, color: tuple = None):  # 更改锚框颜色
+        if not color:
+            old_color = self.dt.model.box_color if self.dt.model else self.box_color
+            new_color = QtWidgets.QColorDialog.getColor(QtGui.QColor(*old_color))
+            if not new_color.isValid():
+                return
+            color = new_color.getRgb()[0:3]
+        self.toolButton_6.setStyleSheet(f"color:rgb{color}")
+        self.box_color = color
         if self.dt.model is None:
             return
         self.dt.model.box_color = self.box_color
@@ -362,6 +409,8 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         # 保存截图
         if index == self.pushButton:
             path = os.path.join(self.lineEdit.text(), f'ScreenShot_{head}.png')
+            if self.label.pixmap() is None:
+                return
             self.label.pixmap().toImage().save(path)
             print(f'ScreenShot has been saved to <a href="file:///{path}">{path}</a>')
         # 保存日志
@@ -402,29 +451,38 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.dt.stopThread()
         self.dt.wait()
         if index == 0:  # webcam
-            self.setSource('0', start=True)
+            self.setSource('0')
         elif index == 1 and os.path.exists(self.lineEdit_2.text()):  # file
-            self.setSource(self.lineEdit_2.text(), preview=True, frame_skip=-1)
+            self.setSource(self.lineEdit_2.text(), frame_skip=-1)
         elif index == 2 or index == 4:  # url or custom data
             text, flag = QtWidgets.QInputDialog.getText(self, 'Custom Source', 'input:', text=self.source)
             if not flag:
                 return
-            self.setSource(text, start=True)
+            self.setSource(text)
         elif index == 3:  # screen
-            self.setSource('screen', start=True, frame_skip=-1)
+            self.setSource('screen', frame_skip=-1)
         self.dt.blockSignals(False)
 
-    def setSource(self, source, start=False, preview=False, **kwargs) -> bool:  # 设置输入源
+    def setSource(self, source, **kwargs) -> bool:  # 设置输入源
         self.source = str(source)
         try:
             self.dt.dataset = detect.DataLoader(self.source, **kwargs)
         except Exception as e:
             self.label.setText(str(e))
-            print(e)
+            self.displayLog(str(e), color='red')
             return False
-        if start:
+        self.comboBox.blockSignals(True)
+        index = [self.source == '0',
+                 self.dt.dataset.is_image or self.dt.dataset.is_video,
+                 self.dt.dataset.is_url,
+                 self.source == 'screen',
+                 True].index(True)
+        self.comboBox.setCurrentIndex(index)
+        self.comboBox.blockSignals(False)
+        if self.dt.dataset.is_wabcam or self.dt.dataset.is_url or self.dt.dataset.is_screen:
             self.dt.startThread()
-        if preview:
+        elif self.dt.dataset.is_image or self.dt.dataset.is_video:
+            self.lineEdit_2.setText(self.source)
             vc = cv2.VideoCapture(self.source)
             _, img = vc.read()
             self.displayImg(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
@@ -437,10 +495,10 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                                  '*.bmp *.dng *.jpeg *.jpg *.mpo *.png *.tif *.tiff *.webp *.pfm)')
         fileDialog.setWindowTitle('选择文件')
         # fileDialog.setFileMode(QtWidgets.QFileDialog.ExistingFiles)  # 多选
-        fileDialog.setDirectory(os.path.dirname(os.path.abspath(self.lineEdit_2.text())))
+        fileDialog.setDirectory(os.path.abspath(self.lineEdit_2.text()))
         if fileDialog.exec() != QtWidgets.QFileDialog.Accepted:
             return
-        self.setSource('|'.join(fileDialog.selectedFiles()), preview=True)
+        self.setSource('|'.join(fileDialog.selectedFiles()))
         self.lineEdit_2.setText(self.source)  # 设置路径
 
     def start(self):  # 启动检测线程
@@ -547,15 +605,15 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         if self.save_video:
             self.video_writer.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
         self.script_api.img_data = img
-        img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1] * 3, QImage.Format_RGB888)
+        img = QtGui.QImage(img.data, img.shape[1], img.shape[0], img.shape[1] * 3, QtGui.QImage.Format_RGB888)
         p = min(self.label.width() / img.width(), self.label.height() / img.height())
-        pix = QPixmap(img).scaled(int(img.width() * p), int(img.height() * p))
+        pix = QtGui.QPixmap(img).scaled(int(img.width() * p), int(img.height() * p))
         self.label.setPixmap(pix)
 
     def displayLog(self, text: str, color='black', plain_text=False):  # 输出控制台信息到textBrowser
         head_ = f"{datetime.now().strftime('%H:%M:%S.%f')} >> "
 
-        if text.startswith(('<', )) or plain_text:
+        if text.startswith(('<',)) or plain_text:
             self.textBrowser.setTextColor(QtGui.QColor('black'))
             self.textBrowser.append(head_)
             self.textBrowser.setTextColor(QtGui.QColor(color))
@@ -614,12 +672,11 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         if eventType == QtCore.QEvent.Drop:
             for file in event.mimeData().urls():
                 f: str = file.toLocalFile()
-                print(f)
                 if not os.path.isfile(f):
                     return False
                 if f.lower().endswith('.onnx'):
                     self.lineEdit_3.setText(f)
-                elif f.lower().endswith(detect.DataLoader.IMAGE_TYPE+detect.DataLoader.VIDEO_TYPE):
+                elif f.lower().endswith(detect.DataLoader.IMAGE_TYPE + detect.DataLoader.VIDEO_TYPE):
                     self.lineEdit_2.setText(f)
                 elif f.lower().endswith('.txt'):
                     self.class_file = f
@@ -629,7 +686,16 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                     self.changePyFile(f)
         return super().eventFilter(objwatched, event)
 
-    def closeEvent(self, a0: QCloseEvent) -> None:
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        if self.dt.is_detecting:
+            msgbox = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
+                                           'Warning',
+                                           QCoreApplication.translate('MainWindow',
+                                                                      '程序正在运行\n是否继续关闭?'),
+                                           QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+            if msgbox.exec() == QtWidgets.QMessageBox.No:
+                a0.ignore()
+        self.saveConfig()
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
 

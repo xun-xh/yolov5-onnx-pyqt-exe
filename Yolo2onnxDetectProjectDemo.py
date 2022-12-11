@@ -22,6 +22,12 @@ def run(**kwargs):
         # import qt_material  # 一个美化pyqt界面的第三方库
         # qt_material.apply_stylesheet(app, 'dark_blue.xml')
 
+        # install translator
+        translator = QtCore.QTranslator()
+        translator.load('zh_CN.qm')
+        app.installTranslator(translator)
+        mainwindow.retranslateUi(mainwindow)
+
         # redirect stdout
         stdout = StdOut()
         stdout.signalForText.connect(mainwindow.displayLog)
