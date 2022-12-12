@@ -9,7 +9,7 @@ from datetime import datetime
 import cv2
 import numpy
 from PyQt5 import QtCore, QtWidgets, QtGui
-from PyQt5.QtCore import QCoreApplication
+from PyQt5.QtWidgets import QMessageBox, QFileDialog
 
 from utils import detect, general
 from utils.resource import Yolo2onnx_detect_Demo_UI, resource_rc
@@ -241,9 +241,9 @@ class DetectThread(QtCore.QThread):
 
             self.img_sig.emit(img)
             self.res_sig.emit(res)
-            time.sleep(0.0001)
+            # time.sleep(0.0001)
 
-        print(f'{self.dataset.path} finished.')
+        print(f'"{self.dataset.path}" finished.')
         del self.dataset
         self.stopThread()
 
@@ -263,6 +263,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.setupUi(self)
         self.statusBar().showMessage('initializing...')
         self.UI()
+        self.animation()
 
         # init params
         self.self_script_path = ''
@@ -273,6 +274,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
 
         # install event
         self.installEventFilter(self)
+        self.textEdit.installEventFilter(self)
         self.textEdit_2.installEventFilter(self)
         self.setAcceptDrops(True)
 
@@ -292,9 +294,9 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.statusBar().showMessage('initialized', 5000)
 
     def UI(self):  # 槽函数
-        self.toolButton.clicked.connect(self.changeSaveFile)  # 选择保存位置
+        self.toolButton.clicked.connect(self.changeOutputPath)  # 选择保存位置
         self.toolButton_2.clicked.connect(self.changeMediaFile)  # 选择媒体文件
-        self.toolButton_3.clicked.connect(self.changeModel)  # 选择模型
+        self.toolButton_3.clicked.connect(self.changeModelFile)  # 选择模型
         self.pushButton_4.clicked.connect(self.start)  # 开始检测槽函数
         self.pushButton_5.clicked.connect(self.stop)
         self.comboBox.currentIndexChanged.connect(self.indexChanged)  # 输入方式切换
@@ -313,6 +315,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.checkBox_6.clicked.connect(self.changeModelConfig)  # 是否返回坐标
         self.checkBox_2.clicked.connect(self.changeModelConfig)  # 是否画锚框
         self.doubleSpinBox.valueChanged.connect(self.changeModelConfig)  # 更改置信度
+        self.doubleSpinBox_2.valueChanged.connect(self.changeModelConfig)  # 更改IOU
         self.toolButton_6.clicked.connect(self.changeBoxColor)  # 更改锚框颜色
         self.checkBox_3.clicked.connect(lambda x: print(f'script {x}'))
         self.pushButton_8.toggled.connect(self.lockBottom)  # 锁定切换 槽函数
@@ -320,6 +323,12 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.pushButton_9.clicked.connect(self.resetSource)  # 重置输入源
 
         self.pushButton_6.setHidden(True)  # 暂停按钮, 暂时隐藏
+
+    def animation(self):
+        self.animation_1 = QtCore.QPropertyAnimation(self.textEdit, b"maximumHeight", self)
+        self.animation_1.setStartValue(200)
+        self.animation_1.setEndValue(20)
+        self.animation_1.setDuration(100)
 
     def loadConfig(self):  # 加载配置
         cfg = general.cfg('config.cfg')
@@ -340,7 +349,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         # display_box
         self.checkBox_2.setChecked(cfg.search('root', 'display_box', default_value=True, return_type=bool))
         # box_color
-        self.changeBoxColor(tuple(map(int, cfg.search('root', 'box_color', default_value='255,0,0').split(','))))
+        self.changeBoxColor(eval(cfg.search('root', 'box_color', default_value='(255,0,0)')))
         # print_result
         self.checkBox_5.setChecked(cfg.search('root', 'print_result', default_value=True, return_type=bool))
         # with_pos
@@ -369,7 +378,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             cfg.set('root', 'conf_thres', self.doubleSpinBox.value())
             cfg.set('root', 'iou_thres', self.doubleSpinBox_2.value())
             cfg.set('root', 'display_box', self.checkBox_2.isChecked())
-            cfg.set('root', 'box_color', ','.join(map(str, self.box_color)))
+            cfg.set('root', 'box_color', self.box_color)
             cfg.set('root', 'print_result', self.checkBox_5.isChecked())
             cfg.set('root', 'with_pos', self.checkBox_6.isChecked())
             cfg.set('root', 'record_video', self.checkBox_4.isChecked())
@@ -446,7 +455,6 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.indexChanged(self.comboBox.currentIndex())
 
     def indexChanged(self, index):  # 切换输入方式
-        self.stopRecord()
         self.dt.blockSignals(True)
         self.dt.stopThread()
         self.dt.wait()
@@ -471,12 +479,13 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.label.setText(str(e))
             self.displayLog(str(e), color='red')
             return False
+        self.stopRecord()
         self.comboBox.blockSignals(True)
-        index = [self.source == '0',
+        index = (self.source == '0',
                  self.dt.dataset.is_image or self.dt.dataset.is_video,
                  self.dt.dataset.is_url,
-                 self.source == 'screen',
-                 True].index(True)
+                 self.source.lower() == 'screen',
+                 True).index(True)
         self.comboBox.setCurrentIndex(index)
         self.comboBox.blockSignals(False)
         if self.dt.dataset.is_wabcam or self.dt.dataset.is_url or self.dt.dataset.is_screen:
@@ -488,18 +497,6 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.displayImg(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             vc.release()
         return 'dataset' in self.dt.__dict__.keys()
-
-    def changeMediaFile(self):  # 选择媒体文件
-        fileDialog = QtWidgets.QFileDialog()
-        fileDialog.setNameFilter('Media Files(*.asf *.avi *.gif *.m4v *.mkv *.mov *.mp4 *.mpeg *.mpg *.ts *.wmv '
-                                 '*.bmp *.dng *.jpeg *.jpg *.mpo *.png *.tif *.tiff *.webp *.pfm)')
-        fileDialog.setWindowTitle('选择文件')
-        # fileDialog.setFileMode(QtWidgets.QFileDialog.ExistingFiles)  # 多选
-        fileDialog.setDirectory(os.path.abspath(self.lineEdit_2.text()))
-        if fileDialog.exec() != QtWidgets.QFileDialog.Accepted:
-            return
-        self.setSource('|'.join(fileDialog.selectedFiles()))
-        self.lineEdit_2.setText(self.source)  # 设置路径
 
     def start(self):  # 启动检测线程
         if self.dt.is_detecting:
@@ -548,10 +545,10 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             self.dt.stopThread()
             self.dt.wait()
 
-    def changeModel(self):  # 选择权重文件
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(None, "选择文件",
-                                                        os.path.dirname(os.path.abspath(self.lineEdit_3.text())),
-                                                        '*.onnx')
+    def changeModelFile(self):  # 选择权重文件
+        path, _ = QFileDialog.getOpenFileName(self, "选择模型",
+                                              os.path.abspath(self.lineEdit_3.text()),
+                                              '*.onnx')
         if path:
             self.lineEdit_3.setText(path)
         class_txt_path = os.path.join(os.path.dirname(os.path.dirname(path)),
@@ -562,24 +559,32 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                 self.textEdit.setText(f.read().replace('，', ',').replace('|', ',').replace('\n', ','))
 
     def changeClassFile(self):  # 选择类别文件
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(None, "选择文件",
-                                                        os.path.dirname(os.path.abspath(self.class_file)),
-                                                        '*.txt')
+        path, _ = QFileDialog.getOpenFileName(self, "选择文件",
+                                              os.path.abspath(self.class_file),
+                                              '*.txt')
         if path:
             self.class_file = path
             with open(self.class_file, 'r') as f:
                 self.textEdit.setText(f.read().replace('，', ',').replace('|', ',').replace('\n', ','))
 
-    def changeSaveFile(self):  # 选择保存位置
-        file_path = QtWidgets.QFileDialog.getExistingDirectory(None, "选择保存位置", self.lineEdit.text())
+    def changeMediaFile(self):  # 选择媒体文件
+        path, _ = QFileDialog.getOpenFileName(self, "选择文件",
+                                              os.path.abspath(self.lineEdit_2.text()),
+                                              '*.asf *.avi *.gif *.m4v *.mkv *.mov *.mp4 *.mpeg *.mpg *.ts *.wmv '
+                                              '*.bmp *.dng *.jpeg *.jpg *.mpo *.png *.tif *.tiff *.webp *.pfm')
+        if path:
+            self.setSource(path)
+
+    def changeOutputPath(self):  # 选择保存位置
+        file_path = QFileDialog.getExistingDirectory(self, "选择保存位置", self.lineEdit.text())
         if file_path:
             self.lineEdit.setText(file_path)
 
     def changePyFile(self, path=None):  # 选择自定义脚本
         if path is None:
-            path, _ = QtWidgets.QFileDialog.getOpenFileName(None, "选择文件",
-                                                            os.path.dirname(os.path.abspath(self.self_script_path)),
-                                                            'Python File(*.py *.pyw)')
+            path, _ = QFileDialog.getOpenFileName(self, "选择文件",
+                                                  os.path.abspath(self.self_script_path),
+                                                  'Python File(*.py *.pyw)')
             if not path:
                 return
         self.self_script_path = path
@@ -653,13 +658,15 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
 
     def eventFilter(self, objwatched, event):  # 重写事件过滤
         eventType = event.type()
-        if objwatched == self.textEdit_2:
-            if eventType == QtCore.QEvent.KeyPress and event.key() == QtCore.Qt.Key_Tab:
-                cursor = self.textEdit_2.textCursor()
-                cursor.insertText(" " * 4)
-                return True
+        # 替换tab为4个空格
+        if objwatched == self.textEdit_2 and eventType == QtCore.QEvent.KeyPress and event.key() == QtCore.Qt.Key_Tab:
+            cursor = self.textEdit_2.textCursor()
+            cursor.insertText(" " * 4)
+            return True
+        # 设置/取消焦点
         if eventType == QtCore.QEvent.MouseButtonPress:
             self.setFocus()
+        # 快捷键: ctrl+r开始; ctrl+e停止; ctrl+s截图
         if eventType == QtCore.QEvent.KeyPress:
             if event.modifiers() == QtCore.Qt.ControlModifier and event.key() == QtCore.Qt.Key_R:
                 self.start()
@@ -667,8 +674,10 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                 self.stop()
             elif event.modifiers() == QtCore.Qt.ControlModifier and event.key() == QtCore.Qt.Key_S:
                 self.saveToFile(self.pushButton)
+        # 捕获拖入文件
         if eventType == QtCore.QEvent.DragEnter:
             event.accept()
+        # 判断并设置拖入文件路径
         if eventType == QtCore.QEvent.Drop:
             for file in event.mimeData().urls():
                 f: str = file.toLocalFile()
@@ -684,28 +693,39 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
                         self.textEdit.setText(f_.read().replace('，', ',').replace('|', ',').replace('\n', ','))
                 elif f.lower().endswith(('.py', '.pyw')):
                     self.changePyFile(f)
+        # 关闭窗口事件
+        if eventType == QtCore.QEvent.Close:
+            if self.dt.is_detecting:
+                msgbox = QMessageBox.question(self,
+                                              self.windowTitle(),
+                                              '正在运行\n是否停止并关闭?',
+                                              QMessageBox.Yes | QMessageBox.Ignore | QMessageBox.No,
+                                              QMessageBox.Yes)
+                if msgbox == QMessageBox.Yes:
+                    self.stop()
+                elif msgbox == QMessageBox.No:
+                    event.ignore()
+                    return
+            self.saveConfig()
+            sys.stdout = sys.__stdout__
+            sys.stderr = sys.__stderr__
+        # 折叠class_list
+        if objwatched == self.textEdit:
+            if eventType == QtCore.QEvent.FocusIn:
+                self.animation_1.setDirection(QtCore.QAbstractAnimation.Backward)
+                self.animation_1.start()
+            elif eventType == QtCore.QEvent.FocusOut:
+                self.animation_1.setDirection(QtCore.QAbstractAnimation.Forward)
+                self.animation_1.start()
         return super().eventFilter(objwatched, event)
-
-    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
-        if self.dt.is_detecting:
-            msgbox = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
-                                           'Warning',
-                                           QCoreApplication.translate('MainWindow',
-                                                                      '程序正在运行\n是否继续关闭?'),
-                                           QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
-            if msgbox.exec() == QtWidgets.QMessageBox.No:
-                a0.ignore()
-        self.saveConfig()
-        sys.stdout = sys.__stdout__
-        sys.stderr = sys.__stderr__
 
 
 class ScriptDataAPI(QtCore.QObject):
     """
-    res_data: 属性，检测结果，dict类型
-    img_data: 属性，实时图片，numpy.ndarray类型
-    setDetectStatus(bool): 方法，设置检测状态，接受一个bool类型参数，为True时开启检测，为False时停止检测
-    setModelConfig(**kwargs): 方法，设置模型配置，接受关键字参数，可选关键字参数有
+    res_data: 属性, 检测结果, dict类型
+    img_data: 属性, 实时图片, numpy.ndarray类型
+    setDetectStatus(bool): 方法, 设置检测状态, 接受一个bool类型参数, 为True时开启检测, 为False时停止检测
+    setModelConfig(**kwargs): 方法, 设置模型配置, 接受关键字参数, 可选关键字参数有
         model_path(str),
         input_width(int),
         input_height(int),

@@ -23,10 +23,10 @@ def run(**kwargs):
         # qt_material.apply_stylesheet(app, 'dark_blue.xml')
 
         # install translator
-        translator = QtCore.QTranslator()
-        translator.load('zh_CN.qm')
-        app.installTranslator(translator)
-        mainwindow.retranslateUi(mainwindow)
+        # translator = QtCore.QTranslator()
+        # translator.load('zh_CN.qm')
+        # app.installTranslator(translator)
+        # mainwindow.retranslateUi(mainwindow)
 
         # redirect stdout
         stdout = StdOut()
@@ -39,6 +39,7 @@ def run(**kwargs):
         mainwindow.show()
         sys.exit(app.exec_())
     else:  # 命令行
+        print(kwargs)
         from utils import detect
 
         if os.path.isdir(kwargs['source']):
@@ -114,7 +115,6 @@ def parse_opt():
     parser.add_argument('--video_split', action='store_true')
     opt_ = parser.parse_args()
     opt_.imgsz *= 2 if len(opt_.imgsz) == 1 else 1  # expand
-    print(vars(opt_))
     return opt_
 
 

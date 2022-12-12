@@ -29,7 +29,7 @@ class YOLOv5(object):
             self.output_names = self.net.getUnconnectedOutLayersNames()
         else:
             import onnxruntime
-            self.net = onnxruntime.InferenceSession(path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+            self.net = onnxruntime.InferenceSession(path)
             model_inputs = self.net.get_inputs()
             self.input_names = [model_inputs[i].name for i in range(len(model_inputs))]
 
@@ -127,10 +127,11 @@ class YOLOv5(object):
 
         # Apply non-maxima suppression to suppress weak, overlapping bounding boxes
         # indices = nms(boxes, scores, self.iou_threshold)
-        indices = cv2.dnn.NMSBoxes(boxes.tolist(), scores.tolist(), self.conf_threshold, self.iou_threshold)
-        indices = numpy.array(indices)
-        indices = indices.flatten()
-        if indices.size > 0:
+        indices = numpy.array(cv2.dnn.NMSBoxes(boxes.tolist(),
+                                               scores.tolist(),
+                                               self.conf_threshold,
+                                               self.iou_threshold)).flatten()
+        if indices.any():
             return boxes[indices], scores[indices], class_ids[indices]
         else:
             return None, None, None
@@ -234,8 +235,8 @@ class DataLoader(object):
         """
         self.path = str(path)
         self.is_wabcam = self.path.isnumeric()
-        self.is_video = os.path.isfile(self.path) and self.path.lower().endswith(DataLoader.VIDEO_TYPE) and os.path.exists(self.path)
-        self.is_image = os.path.isfile(self.path) and self.path.lower().endswith(DataLoader.IMAGE_TYPE) and os.path.exists(self.path)
+        self.is_video = self.path.lower().endswith(DataLoader.VIDEO_TYPE)
+        self.is_image = self.path.lower().endswith(DataLoader.IMAGE_TYPE)
         self.is_screen = self.path.startswith('screen')
         self.is_url = self.path.lower().startswith(DataLoader.URL_TYPE)
         assert self.is_wabcam or self.is_video or self.is_image or self.is_screen or self.is_url, \
@@ -257,7 +258,7 @@ class DataLoader(object):
                         self.grab = self.cap.grab
                         self.isOpened = self.cap.isOpened
                         self.release = self.cap.release
-                        assert self.cap.isOpened()
+                        assert self.cap.isOpened(), f'Failed to load {path}'
 
                         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
                         self.frame_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -358,4 +359,3 @@ class DataLoader(object):
     def __del__(self):
         if 'cap' in self.__dict__:
             self.cap.release()
-
