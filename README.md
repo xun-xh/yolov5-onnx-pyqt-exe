@@ -50,9 +50,10 @@
 > 8. 保存实时截图、控制台记录
 > 9. 自定义脚本，每次检测都将触发，(详细说明请阅读need/self_demo.py)
 
-<figure>
-    <img src="https://img-blog.csdnimg.cn/d2651fe582694c40b818a798aeb154b6.png" width="50%"><img src="https://img-blog.csdnimg.cn/93bfdb8ebb844f78b1fb36745d4188a4.png" width="50%">
-</figure>
+<div align="center">
+    <img src="https://img-blog.csdnimg.cn/d2651fe582694c40b818a798aeb154b6.png" width="45%">
+    <img src="https://img-blog.csdnimg.cn/93bfdb8ebb844f78b1fb36745d4188a4.png" width="45%">
+</div>
 
 ---
 

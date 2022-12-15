@@ -243,7 +243,7 @@ class DetectThread(QtCore.QThread):
             self.res_sig.emit(res)
             # time.sleep(0.0001)
 
-        print(f'"{self.dataset.path}" finished.')
+        print(f'"{self.dataset.source}" finished.')
         del self.dataset
         self.stopThread()
 
@@ -269,6 +269,8 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.self_script_path = ''
         self.save_video = False
         self.source = ''
+        self.flip_type = (None, 1, 0, -1)
+        self.rotate_type = (None, cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_90_COUNTERCLOCKWISE, cv2.ROTATE_180)
         self.video_writer: cv2.VideoWriter
         self.box_color = (255, 0, 0)
 
@@ -312,10 +314,13 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.textBrowser.anchorClicked.connect(lambda x: os.popen(f'"{x.toLocalFile()}"'))  # 超链接打开本地文件
         self.checkBox.stateChanged.connect(self.displayFps)  # 帧数显示
         self.checkBox_5.clicked.connect(self.printResult)  # 打印检测结果
-        self.checkBox_6.clicked.connect(self.changeModelConfig)  # 是否返回坐标
-        self.checkBox_2.clicked.connect(self.changeModelConfig)  # 是否画锚框
-        self.doubleSpinBox.valueChanged.connect(self.changeModelConfig)  # 更改置信度
-        self.doubleSpinBox_2.valueChanged.connect(self.changeModelConfig)  # 更改IOU
+        self.checkBox_6.clicked.connect(self.changeInputConfig)  # 是否返回坐标
+        self.checkBox_2.clicked.connect(self.changeInputConfig)  # 是否画锚框
+        self.doubleSpinBox.valueChanged.connect(self.changeInputConfig)  # 更改置信度
+        self.doubleSpinBox_2.valueChanged.connect(self.changeInputConfig)  # 更改IOU
+        self.spinBox_2.valueChanged.connect(self.changeInputConfig)  # 跳帧
+        self.comboBox_2.currentIndexChanged.connect(self.changeInputConfig)  # 翻转
+        self.comboBox_3.currentIndexChanged.connect(self.changeInputConfig)  # 旋转
         self.toolButton_6.clicked.connect(self.changeBoxColor)  # 更改锚框颜色
         self.checkBox_3.clicked.connect(lambda x: print(f'script {x}'))
         self.pushButton_8.toggled.connect(self.lockBottom)  # 锁定切换 槽函数
@@ -323,48 +328,43 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.pushButton_9.clicked.connect(self.resetSource)  # 重置输入源
 
         self.pushButton_6.setHidden(True)  # 暂停按钮, 暂时隐藏
+        self.line.setHidden(True)
 
     def animation(self):
+        def move_():
+            if not self.textEdit.maximumHeight() == 20:
+                return
+            self.textEdit.moveCursor(QtGui.QTextCursor.Start)
+            self.gridLayout.addWidget(self.textEdit, 6, 1, 1, 1)
+            self.textEdit.verticalScrollBar().setValue(self.textEdit.verticalScrollBar().minimum())
         self.animation_1 = QtCore.QPropertyAnimation(self.textEdit, b"maximumHeight", self)
         self.animation_1.setStartValue(200)
         self.animation_1.setEndValue(20)
         self.animation_1.setDuration(100)
+        self.animation_1.finished.connect(move_)
 
     def loadConfig(self):  # 加载配置
         cfg = general.cfg('config.cfg')
-        # input_source
+        self.spinBox_2.setValue(cfg.search('root', 'frame_skip', default_value=-1, return_type=int))
+        self.comboBox_2.setCurrentIndex(cfg.search('root', 'flip', default_value=0, return_type=int))
+        self.comboBox_3.setCurrentIndex(cfg.search('root', 'rotate', default_value=0, return_type=int))
         self.setSource(cfg.search('root', 'input_source', default_value=0))
-        # model_path
         self.lineEdit_3.setText(cfg.search('root', 'model_path', os.path.join('need', 'models', 'yolov7-tiny.onnx')))
-        # class_path
         self.class_file = cfg.search('root', 'class_path', os.path.join('need', 'yolov7-tiny.txt'))
         if os.path.exists(self.class_file):
             self.textEdit.setText(open(self.class_file, 'r').read().replace('\n', ','))  # 初始化类别
-        # display_fps
         self.checkBox.setChecked(cfg.search('root', 'display_fps', default_value=True, return_type=bool))
-        # conf_thres
         self.doubleSpinBox.setValue(cfg.search('root', 'conf_thres', default_value=0.5, return_type=float))
-        # iou_thres
         self.doubleSpinBox_2.setValue(cfg.search('root', 'iou_thres', default_value=0.5, return_type=float))
-        # display_box
         self.checkBox_2.setChecked(cfg.search('root', 'display_box', default_value=True, return_type=bool))
-        # box_color
         self.changeBoxColor(eval(cfg.search('root', 'box_color', default_value='(255,0,0)')))
-        # print_result
         self.checkBox_5.setChecked(cfg.search('root', 'print_result', default_value=True, return_type=bool))
-        # with_pos
         self.checkBox_6.setChecked(cfg.search('root', 'with_pos', default_value=False, return_type=bool))
-        # record_video
         self.checkBox_4.setChecked(cfg.search('root', 'record_video', default_value=False, return_type=bool))
-        # record_fps
         self.spinBox.setValue(cfg.search('root', 'record_fps', default_value=15, return_type=int))
-        # out_path
         self.lineEdit.setText(cfg.search('root', 'out_path', default_value=os.path.join(os.getcwd(), 'out')))
-        # script_path
         self.changePyFile(cfg.search('root', 'script_path', default_value=os.path.join('need', 'self_demo.py')))
-        # script_status
         self.checkBox_3.setChecked(cfg.search('root', 'script_status', default_value=False, return_type=bool))
-        # detect_status
         if cfg.search('root', 'detect_status', default_value=False, return_type=bool):
             self.start()
 
@@ -372,6 +372,9 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         with general.cfg('config.cfg') as cfg:
             cfg.set('root', 'detect_status', self.dt.is_detecting)
             cfg.set('root', 'input_source', self.source)
+            cfg.set('root', 'frame_skip', self.spinBox_2.value())
+            cfg.set('root', 'flip', self.comboBox_2.currentIndex())
+            cfg.set('root', 'rotate', self.comboBox_3.currentIndex())
             cfg.set('root', 'model_path', self.lineEdit_3.text())
             cfg.set('root', 'class_path', self.class_file)
             cfg.set('root', 'display_fps', self.checkBox.isChecked())
@@ -387,13 +390,15 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
             cfg.set('root', 'script_path', self.self_script_path)
             cfg.set('root', 'script_status', self.checkBox_3.isChecked())
 
-    def changeModelConfig(self):  # 更改模型配置
-        if self.dt.model is None:
-            return
-        self.dt.model.conf_threshold = self.doubleSpinBox.value()  # 更改置信度
-        self.dt.model.iou_threshold = self.doubleSpinBox_2.value()  # 更改IOU
-        self.dt.model.draw_box = self.checkBox_2.isChecked()  # 是否显示锚框
-        self.dt.model.with_pos = self.checkBox_6.isChecked()  # 是否返回坐标
+    def changeInputConfig(self):  # 更改输入配置
+        if self.dt.model is not None:
+            self.dt.model.conf_threshold = self.doubleSpinBox.value()  # 更改置信度
+            self.dt.model.iou_threshold = self.doubleSpinBox_2.value()  # 更改IOU
+            self.dt.model.draw_box = self.checkBox_2.isChecked()  # 是否显示锚框
+            self.dt.model.with_pos = self.checkBox_6.isChecked()  # 是否返回坐标
+        if self.dt.dataset is not None:
+            self.dt.dataset.flip = self.flip_type[self.comboBox_2.currentIndex()]
+            self.dt.dataset.rotate = self.rotate_type[self.comboBox_3.currentIndex()]
 
     def changeBoxColor(self, color: tuple = None):  # 更改锚框颜色
         if not color:
@@ -458,23 +463,27 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         self.dt.blockSignals(True)
         self.dt.stopThread()
         self.dt.wait()
-        if index == 0:  # webcam
+        if index == 0:  # webcam 0
             self.setSource('0')
         elif index == 1 and os.path.exists(self.lineEdit_2.text()):  # file
-            self.setSource(self.lineEdit_2.text(), frame_skip=-1)
+            self.setSource(self.lineEdit_2.text())
         elif index == 2 or index == 4:  # url or custom data
             text, flag = QtWidgets.QInputDialog.getText(self, 'Custom Source', 'input:', text=self.source)
             if not flag:
                 return
             self.setSource(text)
-        elif index == 3:  # screen
-            self.setSource('screen', frame_skip=-1)
+        elif index == 3:  # full screen 0
+            self.setSource('screen')
         self.dt.blockSignals(False)
 
     def setSource(self, source, **kwargs) -> bool:  # 设置输入源
         self.source = str(source)
         try:
-            self.dt.dataset = detect.DataLoader(self.source, **kwargs)
+            self.dt.dataset = detect.DataLoader(self.source,
+                                                frame_skip=self.spinBox_2.value(),
+                                                flip=self.flip_type[self.comboBox_2.currentIndex()],
+                                                rotate=self.rotate_type[self.comboBox_3.currentIndex()],
+                                                **kwargs)
         except Exception as e:
             self.label.setText(str(e))
             self.displayLog(str(e), color='red')
@@ -493,7 +502,11 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         elif self.dt.dataset.is_image or self.dt.dataset.is_video:
             self.lineEdit_2.setText(self.source)
             vc = cv2.VideoCapture(self.source)
-            _, img = vc.read()
+            img = vc.read()[1]
+            if self.comboBox_2.currentIndex() != 0:
+                img = cv2.flip(img, self.flip_type[self.comboBox_2.currentIndex()])
+            if self.comboBox_3.currentIndex() != 0:
+                img = cv2.rotate(img, self.rotate_type[self.comboBox_3.currentIndex()])
             self.displayImg(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             vc.release()
         return 'dataset' in self.dt.__dict__.keys()
@@ -712,6 +725,7 @@ class MainWindow(QtWidgets.QMainWindow, Yolo2onnx_detect_Demo_UI.Ui_MainWindow):
         # 折叠class_list
         if objwatched == self.textEdit:
             if eventType == QtCore.QEvent.FocusIn:
+                self.gridLayout.addWidget(self.textEdit, 7, 0, 1, 3)
                 self.animation_1.setDirection(QtCore.QAbstractAnimation.Backward)
                 self.animation_1.start()
             elif eventType == QtCore.QEvent.FocusOut:
