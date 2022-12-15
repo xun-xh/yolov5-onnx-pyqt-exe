@@ -5,13 +5,11 @@ English | [简体中文](../README.md)
 
 ## \***If you encounter an unsolvable problem, [issue](https://github.com/xun-xh/yolov5-onnx-pyqt-exe/issues) are allowed**\*
 
-## \***Welcome to star**\*
-
 ---
 
 * [Implementation](#implementation)
 * [Preview](#preview)
-  * [download the demo](#download-the-demohttpsdownloadkstorespacedownload3190pluginpublishzip)
+  * [download the demo](#preview)
   * [main window](#main-window)
   * [feature](#feature)
 * [Requirement](#requirement)
@@ -34,11 +32,11 @@ English | [简体中文](../README.md)
 
 ### Preview
 
-#### ***download the demo：<https://download.kstore.space/download/3190/plugin/publish.zip>***
+#### ***download the demo：<https://download.kstore.space/download/3190/plugin/publish.zip> (130MB)***
 
 #### ***main window***:
 
-> ![main window](https://img-blog.csdnimg.cn/a52cbae15c7c4fc19ce5476b6374605f.png)
+> ![main window](https://img1.imgtp.com/2022/12/15/bGiJJXE1.png)
 
 #### ***Feature***
 >
@@ -51,9 +49,10 @@ English | [简体中文](../README.md)
 > 7. record video
 > 8. save screenshot or log
 > 9. custom script, triggered on each picture(see the `need/self_demo.py`)
->
-> ![function](https://img-blog.csdnimg.cn/93bfdb8ebb844f78b1fb36745d4188a4.png#pic_center)
-> ![img_2.png](https://img-blog.csdnimg.cn/d2651fe582694c40b818a798aeb154b6.png#pic_center)
+
+<figure>
+    <img src="https://img-blog.csdnimg.cn/d2651fe582694c40b818a798aeb154b6.png" width="50%"><img src="https://img-blog.csdnimg.cn/93bfdb8ebb844f78b1fb36745d4188a4.png" width="50%">
+</figure>
 
 ---
 

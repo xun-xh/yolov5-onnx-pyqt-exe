@@ -3,13 +3,13 @@
 ---
 [English](.github/README_en.md) | 简体中文
 
-## \***如遇问题，请提issue**\* \***欢迎star**\*
+## \***如遇问题，请提issue**\*
 
 ---
 
 * [实现](#实现)
 * [展示](#展示)
-  * [成品下载体验](#成品下载体验httpsdownloadkstorespacedownload3190pluginpublishzip)
+  * [成品下载体验](#展示)
   * [主界面](#主界面)
   * [功能](#功能)
 * [项目需求](#项目需求-详见requirementstxt)
@@ -32,11 +32,11 @@
 
 ### 展示
 
-#### ***成品下载体验：<https://download.kstore.space/download/3190/plugin/publish.zip>***
+#### ***成品下载体验：<https://download.kstore.space/download/3190/plugin/publish.zip> (130MB)***
 
 #### ***主界面***
 
-> ![主界面](https://img-blog.csdnimg.cn/a52cbae15c7c4fc19ce5476b6374605f.png)
+> ![主界面](https://img1.imgtp.com/2022/12/15/bGiJJXE1.png)
 
 #### ***功能***
 >
@@ -49,9 +49,10 @@
 > 7. 录制检测视频
 > 8. 保存实时截图、控制台记录
 > 9. 自定义脚本，每次检测都将触发，(详细说明请阅读need/self_demo.py)
->
-> ![功能](https://img-blog.csdnimg.cn/93bfdb8ebb844f78b1fb36745d4188a4.png#pic_center)
-> ![img_2.png](https://img-blog.csdnimg.cn/d2651fe582694c40b818a798aeb154b6.png#pic_center)
+
+<figure>
+    <img src="https://img-blog.csdnimg.cn/d2651fe582694c40b818a798aeb154b6.png" width="50%"><img src="https://img-blog.csdnimg.cn/93bfdb8ebb844f78b1fb36745d4188a4.png" width="50%">
+</figure>
 
 ---
 
