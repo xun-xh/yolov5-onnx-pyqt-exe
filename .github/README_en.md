@@ -50,9 +50,10 @@ English | [简体中文](../README.md)
 > 8. save screenshot or log
 > 9. custom script, triggered on each picture(see the `need/self_demo.py`)
 
-<figure>
-    <img src="https://img-blog.csdnimg.cn/d2651fe582694c40b818a798aeb154b6.png" width="50%"><img src="https://img-blog.csdnimg.cn/93bfdb8ebb844f78b1fb36745d4188a4.png" width="50%">
-</figure>
+<div align="center">
+    <img src="https://img-blog.csdnimg.cn/d2651fe582694c40b818a798aeb154b6.png" width="45%">
+    <img src="https://img-blog.csdnimg.cn/93bfdb8ebb844f78b1fb36745d4188a4.png" width="45%">
+</div>
 
 ---
 
