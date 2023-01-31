@@ -10,7 +10,7 @@ import numpy
 
 
 class YOLOv5(object):
-    """使用yolo的.pt格式模型转换为.onnx格式模型进行目标识别"""
+    """使用yolo的.pt格式模型转换为.onnx格式模型进行目标检测"""
 
     def __init__(self, **kwargs):
         self.initConfig(**kwargs)
@@ -167,7 +167,6 @@ class YOLOv5(object):
         boxes_[..., 1] = boxes[..., 1] - boxes[..., 3] * 0.5
         boxes_[..., 2] = boxes[..., 0] + boxes[..., 2] * 0.5
         boxes_[..., 3] = boxes[..., 1] + boxes[..., 3] * 0.5
-
         return boxes_
 
     def __rescaleBoxes(self, boxes):

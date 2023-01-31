@@ -36,7 +36,7 @@ English | [简体中文](../README.md)
 
 #### ***main window***:
 
-> ![main window](https://img1.imgtp.com/2022/12/15/bGiJJXE1.png)
+> ![main window](https://pic.imgdb.cn/item/63d94005e90d1c00987672c7.jpg)
 
 #### ***Feature***
 >

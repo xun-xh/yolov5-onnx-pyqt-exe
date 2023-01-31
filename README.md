@@ -36,7 +36,7 @@
 
 #### ***主界面***
 
-> ![主界面](https://img1.imgtp.com/2022/12/15/bGiJJXE1.png)
+> ![主界面](https://pic.imgdb.cn/item/63d94005e90d1c00987672c7.jpg)
 
 #### ***功能***
 >
