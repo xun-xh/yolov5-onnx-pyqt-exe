@@ -12,6 +12,8 @@ import numpy
 class YOLOv5(object):
     """使用yolo的.pt格式模型转换为.onnx格式模型进行目标检测"""
 
+    input_types_table = {'tensor(float)': numpy.float32, 'tensor(float16)': numpy.float16}
+
     def __init__(self, **kwargs):
         self.initConfig(**kwargs)
 
@@ -32,6 +34,7 @@ class YOLOv5(object):
             self.net = onnxruntime.InferenceSession(path)
             model_inputs = self.net.get_inputs()
             self.input_names = [model_inputs[i].name for i in range(len(model_inputs))]
+            self.input_types = [model_inputs[i].type for i in range(len(model_inputs))]
 
             model_outputs = self.net.get_outputs()
             self.output_names = [model_outputs[i].name for i in range(len(model_outputs))]
@@ -72,7 +75,8 @@ class YOLOv5(object):
         # Scale input pixel values to 0 to 1
         input_img = input_img / 255.0
         input_img = input_img.transpose(2, 0, 1)
-        input_tensor = input_img[numpy.newaxis, :, :, :].astype(numpy.float32)
+        input_tensor = input_img[numpy.newaxis, :, :, :].astype(YOLOv5.input_types_table[self.input_types[0]])
+        # input_tensor = input_img[numpy.newaxis, :, :, :].astype(numpy.float32)
         return input_tensor
 
     def __inference(self, image: numpy.ndarray) -> list[numpy.ndarray]:
